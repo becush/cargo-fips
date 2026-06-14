@@ -16,7 +16,7 @@ edition = "2021"
 rust-version = "1.74"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/your-org/cargo-fips"
-authors = ["cargo-fips contributors"]
+authors = ["becush <becush@gmail.com>"]
 
 # Shared dependency versions, referenced by member crates with `.workspace = true`.
 [workspace.dependencies]

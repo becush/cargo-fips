@@ -188,6 +188,11 @@ against the Security Policy (see the `_note` field).
 
 ## Contributing
 
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full guide. In short: format with
+`cargo fmt`, keep `clippy` clean, document public items, and sign off every commit
+(`git commit -s`, per the [DCO](./DCO)). Security reports go through
+[SECURITY.md](./SECURITY.md).
+
 Dual-licensed under [MIT](./LICENSE-MIT) or [Apache-2.0](./LICENSE-APACHE).
 Adding a validated module is a new backend adapter (`crates/cargo-fips/src/backend/`)
 plus a registry entry — not a fork. Design is issue-first; cross-cutting changes
