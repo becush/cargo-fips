@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "_note": "Module facts (name, vendor, status, level, validation/sunset dates, integrity technique, Security Policy URL) and the tested operating environments (Table 3) are transcribed from the live CMVP listing and certificate #4816's Non-Proprietary Security Policy (140sp4816.pdf), reviewed 2026-06-14. The Security Policy lists NO vendor-affirmed operating environments. CAVP certificate numbers and the full approved-algorithm parameter set are not yet transcribed (cavp_certificate is null). NOTE: the Security Policy states the module version verbatim as 'AWS-LC FIPS 2.0.0'; validated_versions below uses the form 'AWS-LC-FIPS-2.0' pending a project-wide decision to switch to the verbatim string.",
+  "_sources": [
+    "https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4816",
+    "https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4816.pdf"
+  ],
+  "module": {
+    "id": "aws-lc-fips",
+    "vendor": "Amazon Web Services Inc.",
+    "module_type": "software",
+    "security_level": 1,
+    "integrity_technique": "HMAC-SHA2-256",
+    "security_policy_url": "https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4816.pdf"
+  },
+  "certificate": {
+    "cmvp_number": "4816",
+    "status": "active",
+    "validated_versions": ["AWS-LC-FIPS-2.0"],
+    "sunset_date": "2029-09-30"
+  },
+  "binding": {
+    "tested_operating_environments": [
+      {
+        "id": "al2-x86_64-c5metal",
+        "os": "Amazon Linux",
+        "os_version": "2",
+        "arch": "x86_64",
+        "processor": "Intel Xeon Platinum 8275CL (c5.metal)",
+        "paa_enabled": true,
+        "target_triples": ["x86_64-unknown-linux-gnu"]
+      },
+      {
+        "id": "al2023-x86_64-c5metal",
+        "os": "Amazon Linux",
+        "os_version": "2023",
+        "arch": "x86_64",
+        "processor": "Intel Xeon Platinum 8275CL (c5.metal)",
+        "paa_enabled": true,
+        "target_triples": ["x86_64-unknown-linux-gnu"]
+      },
+      {
+        "id": "ubuntu2204-x86_64-c5metal",
+        "os": "Ubuntu",
+        "os_version": "22.04",
+        "arch": "x86_64",
+        "processor": "Intel Xeon Platinum 8275CL (c5.metal)",
+        "paa_enabled": true,
+        "target_triples": ["x86_64-unknown-linux-gnu"]
+      },
+      {
+        "id": "al2-aarch64-c7gmetal",
+        "os": "Amazon Linux",
+        "os_version": "2",
+        "arch": "aarch64",
+        "processor": "AWS Graviton3 (c7g.metal)",
+        "paa_enabled": true,
+        "target_triples": ["aarch64-unknown-linux-gnu"]
+      },
+      {
+        "id": "al2023-aarch64-c7gmetal",
+        "os": "Amazon Linux",
+        "os_version": "2023",
+        "arch": "aarch64",
+        "processor": "AWS Graviton3 (c7g.metal)",
+        "paa_enabled": true,
+        "target_triples": ["aarch64-unknown-linux-gnu"]
+      },
+      {
+        "id": "ubuntu2204-aarch64-c7gmetal",
+        "os": "Ubuntu",
+        "os_version": "22.04",
+        "arch": "aarch64",
+        "processor": "AWS Graviton3 (c7g.metal)",
+        "paa_enabled": true,
+        "target_triples": ["aarch64-unknown-linux-gnu"]
+      }
+    ],
+    "approved_algorithms": [
+      {
+        "name": "AES",
+        "modes": ["GCM", "CBC", "CTR", "KW"],
+        "parameters": { "key_sizes": [128, 192, 256] },
+        "cavp_certificate": null
+      },
+      {
+        "name": "SHA2",
+        "modes": ["256", "384", "512"],
+        "parameters": {},
+        "cavp_certificate": null
+      },
+      {
+        "name": "ECDSA",
+        "modes": ["SigGen", "SigVer", "KeyGen"],
+        "parameters": { "curves": ["P-256", "P-384", "P-521"] },
+        "cavp_certificate": null
+      },
+      {
+        "name": "HMAC",
+        "modes": ["SHA2-256", "SHA2-384", "SHA2-512"],
+        "parameters": {},
+        "cavp_certificate": null
+      }
+    ]
+  }
+}

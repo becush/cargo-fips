@@ -1,0 +1,13 @@
+# Sample project that SHOULD pass `cargo fips check`: aws-lc-rs with the `fips`
+# feature on, no competing crypto. Standalone (own [workspace]); not a member of
+# the parent workspace.
+[package]
+name = "fixture-pass-aws-lc-fips"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+aws-lc-rs = { version = "1", features = ["fips"] }
+
+[workspace]

@@ -1,0 +1,12 @@
+# Sample project that SHOULD fail `cargo fips check`: aws-lc-rs is present but
+# the `fips` feature is OFF, so the build is not actually FIPS.
+[package]
+name = "fixture-fail-fips-off"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+aws-lc-rs = "1"
+
+[workspace]

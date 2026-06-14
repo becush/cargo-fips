@@ -1,0 +1,14 @@
+# Sample project that SHOULD fail `cargo fips check`: aws-lc-rs is correctly in
+# FIPS mode, but a competing, non-validated crypto crate (`sha2`) is also
+# reachable in the build graph — the "bypass the boundary" failure.
+[package]
+name = "fixture-fail-competing-crypto"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+aws-lc-rs = { version = "1", features = ["fips"] }
+sha2 = "0.10"
+
+[workspace]

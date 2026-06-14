@@ -1,0 +1,40 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/cargo-fips",
+    "crates/cargo-fips-registry",
+    "crates/cargo-fips-runtime",
+]
+# Fixtures are standalone sample projects that `cargo fips check` runs against in
+# CI; they are deliberately NOT workspace members (each also declares its own
+# empty [workspace] table to detach fully).
+exclude = ["fixtures"]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+rust-version = "1.74"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/your-org/cargo-fips"
+authors = ["cargo-fips contributors"]
+
+# Shared dependency versions, referenced by member crates with `.workspace = true`.
+[workspace.dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+toml = "0.8"
+# `cargo_metadata` gives us a typed view of `cargo metadata`, including the
+# resolved feature set per node (resolve.nodes[].features) which is how we
+# detect whether a backend's FIPS feature is actually enabled.
+cargo_metadata = "0.18"
+
+# In-tree crates.
+cargo-fips-registry = { path = "crates/cargo-fips-registry", version = "0.0.1" }
+
+[profile.release]
+# NOTE: these are the *tool's own* build settings and have nothing to do with a
+# consumer's validated module. `cargo fips guard` inspects the consumer build.
+opt-level = 2

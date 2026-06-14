@@ -1,0 +1,127 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Build + unit/integration tests for the workspace. These do NOT require
+  # network access to a crypto C toolchain: the registry/runtime tests are pure
+  # Rust.
+  test:
+    name: build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build workspace
+        run: cargo build --workspace --all-targets
+      - name: Test workspace
+        run: cargo test --workspace
+
+  # End-to-end: install the subcommand and run it against the sample fixtures,
+  # asserting the exit-code convention (spec §10.6). `cargo fips check` only runs
+  # `cargo metadata` (graph resolution), so the fixtures' aws-lc-* deps are
+  # resolved, not compiled.
+  e2e:
+    name: cargo fips check (fixtures)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-fips
+        run: cargo install --path crates/cargo-fips
+
+      - name: PASS fixture must exit 0
+        run: cargo fips check --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml
+
+      - name: FIPS-off fixture must exit 1
+        run: |
+          set +e
+          cargo fips check --manifest-path fixtures/fail-fips-off/Cargo.toml
+          code=$?
+          set -e
+          echo "exit code: $code"
+          test "$code" -eq 1
+
+      - name: competing-crypto fixture must exit 1
+        run: |
+          set +e
+          cargo fips check --manifest-path fixtures/fail-competing-crypto/Cargo.toml
+          code=$?
+          set -e
+          echo "exit code: $code"
+          test "$code" -eq 1
+
+      - name: missing fips.toml must exit 2
+        run: |
+          set +e
+          cargo fips check --manifest-path crates/cargo-fips/Cargo.toml
+          code=$?
+          set -e
+          echo "exit code: $code"
+          test "$code" -eq 2
+
+      # `oe` needs no cargo metadata — only fips.toml + registry + rustc.
+      - name: oe declared allowed_oes (multi-OE) must exit 0
+        run: |
+          cargo fips oe --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml
+
+      - name: oe tested OE (aarch64 Graviton) must exit 0
+        run: |
+          cargo fips oe --target aarch64-unknown-linux-gnu \
+            --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml
+
+      - name: oe vendor-affirmable under tested-only must exit 1
+        run: |
+          set +e
+          cargo fips oe --target x86_64-unknown-linux-musl \
+            --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml
+          code=$?
+          set -e
+          echo "exit code: $code"
+          test "$code" -eq 1
+
+      - name: oe off-certificate (deny) must exit 1
+        run: |
+          set +e
+          cargo fips oe --target x86_64-pc-windows-msvc \
+            --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml
+          code=$?
+          set -e
+          echo "exit code: $code"
+          test "$code" -eq 1
+
+      # `guard` is offline too. The fixture backend is prebuilt-static, so even a
+      # perturbing flag is a warning (exit 0), not a failure.
+      - name: guard clean build must exit 0
+        run: |
+          cargo fips guard --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml
+
+      - name: guard perturbing flag on prebuilt-static warns (exit 0)
+        run: |
+          RUSTFLAGS="-C target-cpu=native" \
+            cargo fips guard --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml
+
+  # Style checks. Advisory (continue-on-error) so formatting nits never block the
+  # meaningful gates above; tighten to required once `cargo fmt` has been run.
+  lint:
+    name: fmt & clippy (advisory)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: rustfmt
+        run: cargo fmt --all --check
+      - name: clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings

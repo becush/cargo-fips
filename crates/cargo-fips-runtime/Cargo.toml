@@ -1,0 +1,10 @@
+[package]
+name = "cargo-fips-runtime"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Runtime companion for cargo-fips: assert FIPS mode and record module identity at application startup."
+
+[dependencies]
