@@ -73,7 +73,10 @@ pub fn run(cli: &FipsCli) -> Exit {
         report.fail("no known validated crypto backend detected in the build graph");
     } else {
         let (be, detected) = &backends[0];
-        report.pass(format!("validated backend detected: {}", detected.anchor_crate));
+        report.pass(format!(
+            "validated backend detected: {}",
+            detected.anchor_crate
+        ));
 
         // Policy: the backend must be allowed (when an allow-list is given).
         if !config.policy.allowed_backends.is_empty()
@@ -137,7 +140,9 @@ pub fn run(cli: &FipsCli) -> Exit {
         } else {
             report.fail(format!(
                 "declared version {} is not in certificate #{}'s validated set {:?}",
-                config.target.version, config.target.certificate, entry.certificate.validated_versions
+                config.target.version,
+                config.target.certificate,
+                entry.certificate.validated_versions
             ));
         }
         if let Some((module_crate, version)) = &identity.module_crate {

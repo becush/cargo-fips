@@ -96,7 +96,10 @@ pub fn run(cli: &FipsCli, args: &AttestArgs) -> Exit {
 
     // Provenance.
     let mut provenance: Vec<(String, String)> = vec![
-        ("fips:tool".into(), format!("cargo-fips {}", env!("CARGO_PKG_VERSION"))),
+        (
+            "fips:tool".into(),
+            format!("cargo-fips {}", env!("CARGO_PKG_VERSION")),
+        ),
         ("build:target".into(), target_triple.clone()),
         ("fips:registrySource".into(), config.registry.source.clone()),
     ];
@@ -220,7 +223,11 @@ pub fn run(cli: &FipsCli, args: &AttestArgs) -> Exit {
     );
     println!("   include {}.\"", alg_names.join(", "));
     println!();
-    println!("  wrote {} ({})", output_path.display(), config.attest.format);
+    println!(
+        "  wrote {} ({})",
+        output_path.display(),
+        config.attest.format
+    );
     if let Some(note) = &signing_note {
         println!("  {note}");
     }

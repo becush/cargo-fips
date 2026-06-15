@@ -37,7 +37,9 @@ fn lookup_by_module_id_and_triple() {
         .expect("x86_64 linux is a tested OE in seed data");
     assert_eq!(oe.os, "Amazon Linux");
 
-    assert!(entry.tested_oe_for_triple("riscv64gc-unknown-linux-gnu").is_none());
+    assert!(entry
+        .tested_oe_for_triple("riscv64gc-unknown-linux-gnu")
+        .is_none());
 }
 
 #[test]
@@ -73,7 +75,9 @@ fn builtin_contains_openssl_provider() {
     assert_eq!(entry.certificate.status, CertificateStatus::Active);
     assert!(entry.validates_version("3.0.7-395c1a240fbfffd8"));
     // s390x is a tested OE for this certificate.
-    assert!(entry.tested_oe_for_triple("s390x-unknown-linux-gnu").is_some());
+    assert!(entry
+        .tested_oe_for_triple("s390x-unknown-linux-gnu")
+        .is_some());
 }
 
 #[test]

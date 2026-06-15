@@ -17,7 +17,12 @@ pub struct WolfCrypt;
 
 /// wolfCrypt-family crates, most specific first. `wolfssl-wolfcrypt` is the
 /// official wolfSSL crate with FIPS support.
-const FAMILY: &[&str] = &["wolfssl-wolfcrypt", "wolfcrypt-rs", "wolfssl", "wolfssl-sys"];
+const FAMILY: &[&str] = &[
+    "wolfssl-wolfcrypt",
+    "wolfcrypt-rs",
+    "wolfssl",
+    "wolfssl-sys",
+];
 
 impl FipsBackend for WolfCrypt {
     fn name(&self) -> &'static str {

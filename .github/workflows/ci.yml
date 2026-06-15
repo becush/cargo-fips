@@ -9,27 +9,26 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # Build + unit/integration tests for the workspace. These do NOT require
-  # network access to a crypto C toolchain: the registry/runtime tests are pure
-  # Rust.
-  test:
-    name: build & test
+  # The exact same gate developers run locally — scripts/preflight.sh — so local
+  # and CI run byte-for-byte the same checks: rustfmt --check, clippy -D warnings,
+  # cargo test --workspace, and the offline oe/guard exit-code assertions.
+  preflight:
+    name: preflight
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-      - name: Build workspace
-        run: cargo build --workspace --all-targets
-      - name: Test workspace
-        run: cargo test --workspace
+      - name: ./scripts/preflight.sh
+        run: ./scripts/preflight.sh
 
-  # End-to-end: install the subcommand and run it against the sample fixtures,
-  # asserting the exit-code convention (spec §10.6). `cargo fips check` only runs
-  # `cargo metadata` (graph resolution), so the fixtures' aws-lc-* deps are
-  # resolved, not compiled.
+  # CI-only coverage that needs network or external tools and therefore isn't in
+  # the local preflight gate: the networked subcommands (init/check/attest, which
+  # run `cargo metadata`), CycloneDX schema validation, and cosign sign/verify.
   e2e:
-    name: cargo fips check (fixtures)
+    name: e2e
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -76,47 +75,6 @@ jobs:
           echo "exit code: $code"
           test "$code" -eq 2
 
-      # `oe` needs no cargo metadata — only fips.toml + registry + rustc.
-      - name: oe declared allowed_oes (multi-OE) must exit 0
-        run: |
-          cargo fips oe --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml
-
-      - name: oe tested OE (aarch64 Graviton) must exit 0
-        run: |
-          cargo fips oe --target aarch64-unknown-linux-gnu \
-            --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml
-
-      - name: oe vendor-affirmable under tested-only must exit 1
-        run: |
-          set +e
-          cargo fips oe --target x86_64-unknown-linux-musl \
-            --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml
-          code=$?
-          set -e
-          echo "exit code: $code"
-          test "$code" -eq 1
-
-      - name: oe off-certificate (deny) must exit 1
-        run: |
-          set +e
-          cargo fips oe --target x86_64-pc-windows-msvc \
-            --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml
-          code=$?
-          set -e
-          echo "exit code: $code"
-          test "$code" -eq 1
-
-      # `guard` is offline too. The fixture backend is prebuilt-static, so even a
-      # perturbing flag is a warning (exit 0), not a failure.
-      - name: guard clean build must exit 0
-        run: |
-          cargo fips guard --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml
-
-      - name: guard perturbing flag on prebuilt-static warns (exit 0)
-        run: |
-          RUSTFLAGS="-C target-cpu=native" \
-            cargo fips guard --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml
-
       - name: attest emits a valid CycloneDX 1.6 CBOM
         run: |
           cargo fips attest \
@@ -159,51 +117,3 @@ jobs:
             --signature /tmp/signed.cdx.json.sig \
             --insecure-ignore-tlog /tmp/signed.cdx.json
           echo "cosign signature verified"
-
-      # Source-built backend (wolfCrypt): guard hard-fails on a boundary-perturbing
-      # flag, where a prebuilt-static backend would only warn.
-      - name: guard source-built hard-fails on perturbing flag (exit 1)
-        run: |
-          set +e
-          RUSTFLAGS="-C target-cpu=native" \
-            cargo fips guard --manifest-path fixtures/guard-wolfcrypt/Cargo.toml
-          code=$?
-          set -e
-          echo "exit code: $code"
-          test "$code" -eq 1
-
-      - name: guard source-built clean build passes (exit 0)
-        run: |
-          cargo fips guard --manifest-path fixtures/guard-wolfcrypt/Cargo.toml
-
-      # Platform-provided backend (OpenSSL 3 provider): the validated module is
-      # the OS-supplied fips.so, so build flags don't apply — passes even with a
-      # perturbing RUSTFLAGS.
-      - name: guard platform-provided ignores build flags (exit 0)
-        run: |
-          RUSTFLAGS="-C target-cpu=native" \
-            cargo fips guard --manifest-path fixtures/guard-openssl/Cargo.toml
-
-      # Out-of-process backend (PKCS#11): crypto runs in an external HSM/KMS, so
-      # build flags don't apply — passes even with a perturbing RUSTFLAGS.
-      - name: guard out-of-process ignores build flags (exit 0)
-        run: |
-          RUSTFLAGS="-C target-cpu=native" \
-            cargo fips guard --manifest-path fixtures/guard-pkcs11/Cargo.toml
-
-  # Style checks. Advisory (continue-on-error) so formatting nits never block the
-  # meaningful gates above; tighten to required once `cargo fmt` has been run.
-  lint:
-    name: fmt & clippy (advisory)
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
-      - name: rustfmt
-        run: cargo fmt --all --check
-      - name: clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings

@@ -90,7 +90,11 @@ pub fn build_cbom(input: &AttestationInput, timestamp_secs: u64) -> Value {
     let timestamp = iso8601_utc(timestamp_secs);
     let serial = format!(
         "urn:uuid:{}",
-        uuid_v4_like(timestamp_secs.wrapping_mul(0x9E3779B1).wrapping_add(input.cmvp_number.len() as u64))
+        uuid_v4_like(
+            timestamp_secs
+                .wrapping_mul(0x9E3779B1)
+                .wrapping_add(input.cmvp_number.len() as u64)
+        )
     );
     let level = cert_level_str(input.security_level);
 
@@ -135,7 +139,9 @@ pub fn build_cbom(input: &AttestationInput, timestamp_secs: u64) -> Value {
         json!({ "name": "fips:declaredVersion", "value": input.declared_version }),
     ];
     if let Some((crate_name, crate_ver)) = &input.resolved_crate {
-        module_props.push(json!({ "name": "fips:resolvedCrate", "value": format!("{crate_name} {crate_ver}") }));
+        module_props.push(
+            json!({ "name": "fips:resolvedCrate", "value": format!("{crate_name} {crate_ver}") }),
+        );
     }
     let module_component = json!({
         "type": "library",
@@ -167,17 +173,17 @@ pub fn build_cbom(input: &AttestationInput, timestamp_secs: u64) -> Value {
         algorithm_properties.insert("primitive".into(), json!(primitive));
         algorithm_properties.insert("executionEnvironment".into(), json!("software-plain-ram"));
         algorithm_properties.insert("certificationLevel".into(), json!([level]));
-        algorithm_properties.insert(
-            "cryptoFunctions".into(),
-            json!(crypto_functions(primitive)),
-        );
+        algorithm_properties.insert("cryptoFunctions".into(), json!(crypto_functions(primitive)));
         if let Some(param) = &alg.parameter_set {
             algorithm_properties.insert("parameterSetIdentifier".into(), json!(param));
         }
 
         let mut crypto_properties = Map::new();
         crypto_properties.insert("assetType".into(), json!("algorithm"));
-        crypto_properties.insert("algorithmProperties".into(), Value::Object(algorithm_properties));
+        crypto_properties.insert(
+            "algorithmProperties".into(),
+            Value::Object(algorithm_properties),
+        );
         if let Some(oid) = &alg.oid {
             crypto_properties.insert("oid".into(), json!(oid));
         }
@@ -244,11 +250,22 @@ fn uuid_v4_like(seed: u64) -> String {
     let h = |b: u8| format!("{b:02x}");
     format!(
         "{}{}{}{}-{}{}-{}{}-{}{}-{}{}{}{}{}{}",
-        h(bytes[0]), h(bytes[1]), h(bytes[2]), h(bytes[3]),
-        h(bytes[4]), h(bytes[5]),
-        h(bytes[6]), h(bytes[7]),
-        h(bytes[8]), h(bytes[9]),
-        h(bytes[10]), h(bytes[11]), h(bytes[12]), h(bytes[13]), h(bytes[14]), h(bytes[15]),
+        h(bytes[0]),
+        h(bytes[1]),
+        h(bytes[2]),
+        h(bytes[3]),
+        h(bytes[4]),
+        h(bytes[5]),
+        h(bytes[6]),
+        h(bytes[7]),
+        h(bytes[8]),
+        h(bytes[9]),
+        h(bytes[10]),
+        h(bytes[11]),
+        h(bytes[12]),
+        h(bytes[13]),
+        h(bytes[14]),
+        h(bytes[15]),
     )
 }
 
@@ -340,7 +357,10 @@ mod tests {
         let u = uuid_v4_like(12345);
         assert_eq!(u.len(), 36);
         let parts: Vec<&str> = u.split('-').collect();
-        assert_eq!(parts.iter().map(|p| p.len()).collect::<Vec<_>>(), vec![8, 4, 4, 4, 12]);
+        assert_eq!(
+            parts.iter().map(|p| p.len()).collect::<Vec<_>>(),
+            vec![8, 4, 4, 4, 12]
+        );
         assert_eq!(&parts[2][0..1], "4"); // version nibble
     }
 }

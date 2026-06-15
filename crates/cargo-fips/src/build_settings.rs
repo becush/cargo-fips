@@ -255,14 +255,21 @@ mod tests {
         let s = settings_with_rustflags(&[]);
         let r = evaluate(&s, BoundaryKind::PrebuiltStatic);
         assert_eq!(r.violations(), 0);
-        assert!(r.findings().iter().any(|f| f.message.contains("no boundary-perturbing")));
+        assert!(r
+            .findings()
+            .iter()
+            .any(|f| f.message.contains("no boundary-perturbing")));
     }
 
     #[test]
     fn target_cpu_fails_for_source_built() {
         let s = settings_with_rustflags(&["-C", "target-cpu=native"]);
         let r = evaluate(&s, BoundaryKind::SourceBuilt);
-        assert_eq!(r.violations(), 1, "source-built should hard-fail on target-cpu");
+        assert_eq!(
+            r.violations(),
+            1,
+            "source-built should hard-fail on target-cpu"
+        );
     }
 
     #[test]
@@ -270,7 +277,10 @@ mod tests {
         let s = settings_with_rustflags(&["-Ctarget-cpu=native"]);
         let r = evaluate(&s, BoundaryKind::PrebuiltStatic);
         assert_eq!(r.violations(), 0, "prebuilt-static should warn, not fail");
-        assert!(r.findings().iter().any(|f| f.message.contains("target-cpu")));
+        assert!(r
+            .findings()
+            .iter()
+            .any(|f| f.message.contains("target-cpu")));
     }
 
     #[test]
@@ -294,7 +304,10 @@ mod tests {
         let s = settings_with_rustflags(&["-C", "target-cpu=native"]);
         let r = evaluate(&s, BoundaryKind::PlatformProvided);
         assert_eq!(r.violations(), 0);
-        assert!(r.findings().iter().any(|f| f.message.contains("platform-provided")));
+        assert!(r
+            .findings()
+            .iter()
+            .any(|f| f.message.contains("platform-provided")));
     }
 
     #[test]
@@ -302,6 +315,9 @@ mod tests {
         let s = settings_with_rustflags(&["-C", "target-cpu=native"]);
         let r = evaluate(&s, BoundaryKind::OutOfProcess);
         assert_eq!(r.violations(), 0);
-        assert!(r.findings().iter().any(|f| f.message.contains("out-of-process")));
+        assert!(r
+            .findings()
+            .iter()
+            .any(|f| f.message.contains("out-of-process")));
     }
 }

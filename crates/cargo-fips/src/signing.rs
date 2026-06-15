@@ -82,7 +82,10 @@ pub fn cosign_sign(cbom: &Path, key: Option<&Path>) -> Result<SignOutputs, SignE
     let (certificate, bundle) = if key.is_some() {
         (None, None)
     } else {
-        (Some(with_suffix(cbom, ".pem")), Some(with_suffix(cbom, ".bundle")))
+        (
+            Some(with_suffix(cbom, ".pem")),
+            Some(with_suffix(cbom, ".bundle")),
+        )
     };
 
     let args = sign_blob_args(
@@ -101,7 +104,10 @@ pub fn cosign_sign(cbom: &Path, key: Option<&Path>) -> Result<SignOutputs, SignE
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(SignError(format!("cosign exited non-zero: {}", stderr.trim())));
+        return Err(SignError(format!(
+            "cosign exited non-zero: {}",
+            stderr.trim()
+        )));
     }
 
     Ok(SignOutputs {

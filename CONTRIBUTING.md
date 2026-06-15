@@ -49,6 +49,13 @@ cargo clippy --workspace --all-targets -- -D warnings # lints, warnings denied
 cargo test --workspace                               # unit + integration tests
 ```
 
+Or run the whole gate in one shot — the three commands above plus the offline
+`oe`/`guard` exit-code checks against the fixtures:
+
+```sh
+./scripts/preflight.sh
+```
+
 CI additionally installs the subcommand and runs it against `fixtures/` to assert
 the [exit-code convention](./cargo-fips-spec.md) (0 pass, 1 policy violation,
 2 usage error, 3 registry unavailable). If you change behavior, update or add a

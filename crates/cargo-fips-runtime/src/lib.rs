@@ -156,7 +156,9 @@ pub fn assert_fips_with(probe: &dyn FipsProbe, on_failure: OnFailure) -> FipsSta
         FipsState::Enabled => {}
         FipsState::Disabled => match on_failure {
             OnFailure::Panic => panic!("cargo-fips-runtime: module is not in FIPS mode"),
-            OnFailure::Warn => eprintln!("cargo-fips-runtime: warning — module is not in FIPS mode"),
+            OnFailure::Warn => {
+                eprintln!("cargo-fips-runtime: warning — module is not in FIPS mode")
+            }
         },
         FipsState::Unknown => {
             eprintln!("cargo-fips-runtime: warning — FIPS state is unknown (no probe wired up)");
