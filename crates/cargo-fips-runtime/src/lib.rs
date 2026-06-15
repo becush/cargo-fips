@@ -9,11 +9,16 @@
 //! It is the meeting point with a future unified provider trait, where an
 //! `is_fips()` hook becomes the [`FipsProbe`] implementation.
 //!
-//! # Status
+//! # Probes
 //!
-//! Skeleton. The shipped [`NullProbe`] always reports [`FipsState::Unknown`];
-//! real probes (e.g. wrapping rustls' `CryptoProvider::fips()` or an
-//! aws-lc-rs runtime query) are wired up per backend in later phases.
+//! - [`NullProbe`] (always available) reports [`FipsState::Unknown`] — the
+//!   dependency-free default.
+//! - [`AwsLcRsProbe`] (behind the `aws-lc-rs` feature) calls
+//!   `aws_lc_rs::try_fips_mode()` to report the live state of the linked AWS-LC
+//!   module (CMVP certificate #4816).
+//!
+//! Other backends implement [`FipsProbe`] the same way; this trait is the hook a
+//! future unified provider abstraction (`is_fips()`) would satisfy.
 //!
 //! # Example
 //!
@@ -24,19 +29,29 @@
 //! let state = assert_fips!(NullProbe, OnFailure::Warn);
 //! assert_eq!(state, FipsState::Unknown);
 //! ```
+//!
+//! With the `aws-lc-rs` feature, assert at startup against the real module:
+//!
+//! ```ignore
+//! use cargo_fips_runtime::{assert_fips, AwsLcRsProbe, OnFailure};
+//!
+//! // Panics unless the linked AWS-LC is in FIPS-approved mode.
+//! assert_fips!(AwsLcRsProbe, OnFailure::Panic);
+//! ```
 
 #![forbid(unsafe_code)]
 
 use std::fmt;
 
 /// Result of a runtime FIPS check.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum FipsState {
     /// The module reports FIPS mode active and POST passed.
     Enabled,
     /// The module is loaded but not operating in FIPS mode.
     Disabled,
     /// Could not be determined (e.g. no probe wired up).
+    #[default]
     Unknown,
 }
 
@@ -64,12 +79,6 @@ pub struct ModuleReport {
     pub state: FipsState,
 }
 
-impl Default for FipsState {
-    fn default() -> Self {
-        FipsState::Unknown
-    }
-}
-
 /// A backend-specific hook that reports live FIPS status and module identity.
 ///
 /// Implementors wrap whatever the validated backend exposes at runtime.
@@ -94,6 +103,35 @@ pub struct NullProbe;
 impl FipsProbe for NullProbe {
     fn state(&self) -> FipsState {
         FipsState::Unknown
+    }
+}
+
+/// A [`FipsProbe`] backed by `aws-lc-rs` (AWS-LC, CMVP certificate #4816).
+///
+/// Available behind the `aws-lc-rs` crate feature. It calls
+/// `aws_lc_rs::try_fips_mode()`, which returns `Ok` only when the linked AWS-LC
+/// is the FIPS module operating in approved mode; any error maps to
+/// [`FipsState::Disabled`]. The power-on self-test (POST) runs inside the module
+/// at load, so reaching this call already implies POST did not abort.
+#[cfg(feature = "aws-lc-rs")]
+pub struct AwsLcRsProbe;
+
+#[cfg(feature = "aws-lc-rs")]
+impl FipsProbe for AwsLcRsProbe {
+    fn state(&self) -> FipsState {
+        match aws_lc_rs::try_fips_mode() {
+            Ok(()) => FipsState::Enabled,
+            Err(_) => FipsState::Disabled,
+        }
+    }
+
+    fn identity(&self) -> ModuleReport {
+        ModuleReport {
+            module: Some("aws-lc-fips".to_string()),
+            version: None,
+            certificate: Some("4816".to_string()),
+            state: self.state(),
+        }
     }
 }
 
@@ -196,5 +234,18 @@ mod tests {
         let _ = assert_fips!();
         let _ = assert_fips!(NullProbe);
         let _ = assert_fips!(NullProbe, OnFailure::Warn);
+    }
+}
+
+#[cfg(all(test, feature = "aws-lc-rs"))]
+mod aws_lc_rs_tests {
+    use super::*;
+
+    #[test]
+    fn probe_reports_a_concrete_state() {
+        // Under the FIPS backend this is `Enabled`; regardless, a real probe must
+        // never report `Unknown`.
+        assert_ne!(AwsLcRsProbe.state(), FipsState::Unknown);
+        assert_eq!(AwsLcRsProbe.identity().certificate.as_deref(), Some("4816"));
     }
 }

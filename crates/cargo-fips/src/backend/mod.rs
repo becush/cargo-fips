@@ -5,6 +5,9 @@
 //! `&self` so adapters can be held as trait objects in [`all_backends`].
 
 pub mod aws_lc;
+pub mod openssl;
+pub mod pkcs11;
+pub mod wolfcrypt;
 
 use crate::metadata::Graph;
 
@@ -19,8 +22,7 @@ pub enum FipsModeStatus {
 /// A backend located in the dependency graph.
 #[derive(Debug, Clone)]
 pub struct DetectedBackend {
-    /// Adapter name; surfaced in attestation output (Phase 3).
-    #[allow(dead_code)]
+    /// Stable adapter name (e.g. `aws-lc-rs`), used by `init`.
     pub name: &'static str,
     /// The crate that anchors detection (e.g. `aws-lc-rs`).
     pub anchor_crate: String,
@@ -46,10 +48,8 @@ pub enum BoundaryKind {
     /// Compiled from controlled source; in-core hash is recomputed (e.g. wolfCrypt).
     SourceBuilt,
     /// Provided by the platform (e.g. the system OpenSSL 3 FIPS provider).
-    #[allow(dead_code)] // constructed by the openssl provider adapter (not yet added)
     PlatformProvided,
     /// External module reached over IPC (e.g. PKCS#11 HSM/KMS).
-    #[allow(dead_code)] // constructed by the pkcs11 adapter (not yet added)
     OutOfProcess,
 }
 
@@ -86,12 +86,21 @@ pub trait FipsBackend {
 
     /// How the boundary is built (determines guard semantics).
     fn build_parameters(&self) -> BuildParameters;
+
+    /// Crates belonging to this backend (the binding plus its sys-crates), which
+    /// must never be flagged as "competing" cryptography.
+    fn own_crates(&self) -> &'static [&'static str];
 }
 
 /// All backend adapters known to the tool.
 pub fn all_backends() -> Vec<Box<dyn FipsBackend>> {
-    // Explicit cast so the element type is the trait object, not `Box<AwsLcRs>`.
-    vec![Box::new(aws_lc::AwsLcRs) as Box<dyn FipsBackend>]
+    // Explicit casts so the element type is the trait object, not the concrete type.
+    vec![
+        Box::new(aws_lc::AwsLcRs) as Box<dyn FipsBackend>,
+        Box::new(wolfcrypt::WolfCrypt) as Box<dyn FipsBackend>,
+        Box::new(openssl::OpenSslProvider) as Box<dyn FipsBackend>,
+        Box::new(pkcs11::Pkcs11) as Box<dyn FipsBackend>,
+    ]
 }
 
 /// Every backend that is present in the graph, paired with its detection result.

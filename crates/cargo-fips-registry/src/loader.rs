@@ -28,13 +28,45 @@ pub enum RegistryError {
 ///
 /// Each entry is the raw JSON of a `registry/modules/*.json` file, embedded at
 /// build time. Add new modules here as adapters land.
-const BUILTIN_ENTRIES: &[(&str, &str)] = &[(
-    "aws-lc-fips.json",
-    include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../registry/modules/aws-lc-fips.json"
-    )),
-)];
+const BUILTIN_ENTRIES: &[(&str, &str)] = &[
+    (
+        "aws-lc-fips.json",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../registry/modules/aws-lc-fips.json"
+        )),
+    ),
+    (
+        "wolfcrypt.json",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../registry/modules/wolfcrypt.json"
+        )),
+    ),
+    (
+        "openssl.json",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../registry/modules/openssl.json"
+        )),
+    ),
+];
+
+/// Parse a registry file that contains either a single entry object or an array
+/// of entries (a module with multiple certificates).
+fn parse_entries(raw: &str, source_path: &str) -> Result<Vec<RegistryEntry>, RegistryError> {
+    let mk = |source| RegistryError::Parse {
+        path: source_path.to_string(),
+        source,
+    };
+    if raw.trim_start().starts_with('[') {
+        serde_json::from_str::<Vec<RegistryEntry>>(raw).map_err(mk)
+    } else {
+        serde_json::from_str::<RegistryEntry>(raw)
+            .map(|entry| vec![entry])
+            .map_err(mk)
+    }
+}
 
 /// An in-memory collection of registry records.
 #[derive(Debug, Clone, Default)]
@@ -45,14 +77,9 @@ pub struct Registry {
 impl Registry {
     /// Load the built-in registry distributed with the tool.
     pub fn builtin() -> Result<Self, RegistryError> {
-        let mut entries = Vec::with_capacity(BUILTIN_ENTRIES.len());
+        let mut entries = Vec::new();
         for (name, raw) in BUILTIN_ENTRIES {
-            let entry: RegistryEntry =
-                serde_json::from_str(raw).map_err(|source| RegistryError::Parse {
-                    path: format!("<builtin>/{name}"),
-                    source,
-                })?;
-            entries.push(entry);
+            entries.extend(parse_entries(raw, &format!("<builtin>/{name}"))?);
         }
         Ok(Self { entries })
     }
@@ -84,12 +111,7 @@ impl Registry {
                 path: path.display().to_string(),
                 source,
             })?;
-            let entry: RegistryEntry =
-                serde_json::from_str(&raw).map_err(|source| RegistryError::Parse {
-                    path: path.display().to_string(),
-                    source,
-                })?;
-            entries.push(entry);
+            entries.extend(parse_entries(&raw, &path.display().to_string())?);
         }
         Ok(Self { entries })
     }

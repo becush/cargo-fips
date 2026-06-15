@@ -1,0 +1,117 @@
+[
+  {
+    "schema_version": 1,
+    "_note": "wolfCrypt FIPS 140-3 certificate #4718 (module version v5.2.1, CAVP A4308). Module name, vendor, status, level, sunset date, Security Policy URL, software version, and CAVP number transcribed from the live CMVP listing and Security Policy 140sp4718.pdf, reviewed 2026-06-14. The Security Policy lists additional embedded operating environments; a representative subset (with mappable Rust target triples) is captured here. The in-core integrity technique (HMAC-SHA-256) is the wolfCrypt FIPS default and should be confirmed against the Security Policy.",
+    "_sources": [
+      "https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4718",
+      "https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4718.pdf"
+    ],
+    "module": {
+      "id": "wolfcrypt",
+      "vendor": "wolfSSL Inc.",
+      "module_type": "software",
+      "security_level": 1,
+      "integrity_technique": "HMAC-SHA-256",
+      "security_policy_url": "https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4718.pdf"
+    },
+    "certificate": {
+      "cmvp_number": "4718",
+      "status": "active",
+      "validated_versions": ["wolfCrypt 5.2.1"],
+      "sunset_date": "2029-07-10"
+    },
+    "binding": {
+      "tested_operating_environments": [
+        {
+          "id": "ubuntu-linux44-x86_64",
+          "os": "Ubuntu",
+          "os_version": "Linux 4.4",
+          "arch": "x86_64",
+          "processor": "Intel (with/without PAA)",
+          "paa_enabled": true,
+          "target_triples": ["x86_64-unknown-linux-gnu"]
+        },
+        {
+          "id": "embedded-linux-cortex-a7",
+          "os": "Linux",
+          "os_version": "5.x (embedded)",
+          "arch": "armv7",
+          "processor": "ARM Cortex-A7",
+          "paa_enabled": false,
+          "target_triples": ["armv7-unknown-linux-gnueabihf"]
+        },
+        {
+          "id": "windows10-x86_64",
+          "os": "Windows",
+          "os_version": "10",
+          "arch": "x86_64",
+          "processor": "Intel",
+          "paa_enabled": true,
+          "target_triples": ["x86_64-pc-windows-msvc"]
+        }
+      ],
+      "approved_algorithms": [
+        { "name": "AES", "modes": ["CBC", "CCM", "CMAC", "CTR", "ECB", "GCM", "GMAC", "OFB"], "parameters": { "key_sizes": [128, 192, 256] }, "cavp_certificate": "A4308" },
+        { "name": "SHA2", "modes": ["224", "256", "384", "512"], "parameters": {}, "cavp_certificate": "A4308" },
+        { "name": "SHA3", "modes": ["224", "256", "384", "512"], "parameters": {}, "cavp_certificate": "A4308" },
+        { "name": "HMAC", "modes": ["SHA-1", "SHA2-256", "SHA2-384", "SHA2-512", "SHA3-256"], "parameters": {}, "cavp_certificate": "A4308" },
+        { "name": "ECDSA", "modes": ["KeyGen", "KeyVer", "SigGen", "SigVer"], "parameters": { "curves": ["P-224", "P-256", "P-384", "P-521"] }, "cavp_certificate": "A4308" },
+        { "name": "RSA", "modes": ["KeyGen", "SigGen", "SigVer"], "parameters": { "key_sizes": [2048, 3072, 4096] }, "cavp_certificate": "A4308" },
+        { "name": "Hash_DRBG", "modes": [], "parameters": {}, "cavp_certificate": "A4308" }
+      ]
+    }
+  },
+  {
+    "schema_version": 1,
+    "_note": "wolfCrypt FIPS 140-3 certificate #5041 (module version v5.2.0.1, CAVP A2461), the evergreen successor to #4718. All fields transcribed from the live CMVP listing for certificate #5041, reviewed 2026-06-14, including the full tested-OE and approved-algorithm tables. The in-core integrity technique (HMAC-SHA-256) is the wolfCrypt FIPS default and should be confirmed against the Security Policy.",
+    "_sources": [
+      "https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/5041",
+      "https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp5041.pdf"
+    ],
+    "module": {
+      "id": "wolfcrypt",
+      "vendor": "wolfSSL Inc.",
+      "module_type": "software",
+      "security_level": 1,
+      "integrity_technique": "HMAC-SHA-256",
+      "security_policy_url": "https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp5041.pdf"
+    },
+    "certificate": {
+      "cmvp_number": "5041",
+      "status": "active",
+      "validated_versions": ["wolfCrypt 5.2.0.1"],
+      "sunset_date": "2030-07-17"
+    },
+    "binding": {
+      "tested_operating_environments": [
+        {
+          "id": "ubuntu1604-linux44-x86_64",
+          "os": "Ubuntu",
+          "os_version": "16.04 LTS (Linux 4.4)",
+          "arch": "x86_64",
+          "processor": "Intel Core i5-5300U (with/without PAA)",
+          "paa_enabled": true,
+          "target_triples": ["x86_64-unknown-linux-gnu"]
+        },
+        {
+          "id": "windows10-i5-x86_64",
+          "os": "Windows",
+          "os_version": "10",
+          "arch": "x86_64",
+          "processor": "Intel Core i5-5300U (with/without PAA)",
+          "paa_enabled": true,
+          "target_triples": ["x86_64-pc-windows-msvc"]
+        }
+      ],
+      "approved_algorithms": [
+        { "name": "AES", "modes": ["CBC", "CCM", "CMAC", "CTR", "ECB", "GCM", "GMAC", "OFB"], "parameters": { "key_sizes": [128, 192, 256] }, "cavp_certificate": "A2461" },
+        { "name": "SHA2", "modes": ["224", "256", "384", "512"], "parameters": {}, "cavp_certificate": "A2461" },
+        { "name": "SHA3", "modes": ["224", "256", "384", "512"], "parameters": {}, "cavp_certificate": "A2461" },
+        { "name": "HMAC", "modes": ["SHA-1", "SHA2-256", "SHA2-384", "SHA2-512", "SHA3-256"], "parameters": {}, "cavp_certificate": "A2461" },
+        { "name": "ECDSA", "modes": ["KeyGen", "KeyVer", "SigGen", "SigVer"], "parameters": { "curves": ["P-224", "P-256", "P-384", "P-521"] }, "cavp_certificate": "A2461" },
+        { "name": "RSA", "modes": ["KeyGen", "SigGen", "SigVer"], "parameters": { "key_sizes": [2048, 3072, 4096] }, "cavp_certificate": "A2461" },
+        { "name": "Hash_DRBG", "modes": [], "parameters": {}, "cavp_certificate": "A2461" }
+      ]
+    }
+  }
+]

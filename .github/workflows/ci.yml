@@ -38,6 +38,14 @@ jobs:
       - name: Install cargo-fips
         run: cargo install --path crates/cargo-fips
 
+      - name: init scaffolds a fips.toml from the graph
+        run: |
+          cargo fips init --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml \
+            --output /tmp/fips.gen.toml
+          cat /tmp/fips.gen.toml
+          grep -q 'certificate = "4816"' /tmp/fips.gen.toml
+          grep -q '"aws-lc-rs"' /tmp/fips.gen.toml
+
       - name: PASS fixture must exit 0
         run: cargo fips check --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml
 
@@ -108,6 +116,80 @@ jobs:
         run: |
           RUSTFLAGS="-C target-cpu=native" \
             cargo fips guard --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml
+
+      - name: attest emits a valid CycloneDX 1.6 CBOM
+        run: |
+          cargo fips attest \
+            --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml \
+            --output /tmp/attestation.cdx.json
+          python3 - <<'PY'
+          import json
+          d = json.load(open("/tmp/attestation.cdx.json"))
+          assert d["bomFormat"] == "CycloneDX", d["bomFormat"]
+          assert d["specVersion"] == "1.6", d["specVersion"]
+          assert len(d["components"]) >= 2, "expected module + algorithms"
+          assert d["serialNumber"].startswith("urn:uuid:")
+          print("CBOM ok:", len(d["components"]), "components")
+          PY
+
+      - name: validate CBOM against the CycloneDX 1.6 schema
+        run: |
+          python3 -m venv /tmp/cdxenv
+          /tmp/cdxenv/bin/pip install --quiet 'cyclonedx-python-lib[json-validation]'
+          /tmp/cdxenv/bin/python - <<'PY'
+          from cyclonedx.schema import SchemaVersion
+          from cyclonedx.validation.json import JsonStrictValidator
+          data = open("/tmp/attestation.cdx.json").read()
+          err = JsonStrictValidator(SchemaVersion.V1_6).validate_str(data)
+          assert err is None, f"CBOM failed CycloneDX 1.6 schema validation: {err!r}"
+          print("CBOM is CycloneDX 1.6 schema-valid")
+          PY
+
+      - name: install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: sign + verify the CBOM with cosign (key-based, offline)
+        run: |
+          cd /tmp
+          COSIGN_PASSWORD="" cosign generate-key-pair
+          COSIGN_PASSWORD="" cargo fips attest \
+            --manifest-path "$GITHUB_WORKSPACE/fixtures/pass-aws-lc-fips/Cargo.toml" \
+            --output /tmp/signed.cdx.json --sign --cosign-key /tmp/cosign.key
+          cosign verify-blob --key /tmp/cosign.pub \
+            --signature /tmp/signed.cdx.json.sig \
+            --insecure-ignore-tlog /tmp/signed.cdx.json
+          echo "cosign signature verified"
+
+      # Source-built backend (wolfCrypt): guard hard-fails on a boundary-perturbing
+      # flag, where a prebuilt-static backend would only warn.
+      - name: guard source-built hard-fails on perturbing flag (exit 1)
+        run: |
+          set +e
+          RUSTFLAGS="-C target-cpu=native" \
+            cargo fips guard --manifest-path fixtures/guard-wolfcrypt/Cargo.toml
+          code=$?
+          set -e
+          echo "exit code: $code"
+          test "$code" -eq 1
+
+      - name: guard source-built clean build passes (exit 0)
+        run: |
+          cargo fips guard --manifest-path fixtures/guard-wolfcrypt/Cargo.toml
+
+      # Platform-provided backend (OpenSSL 3 provider): the validated module is
+      # the OS-supplied fips.so, so build flags don't apply — passes even with a
+      # perturbing RUSTFLAGS.
+      - name: guard platform-provided ignores build flags (exit 0)
+        run: |
+          RUSTFLAGS="-C target-cpu=native" \
+            cargo fips guard --manifest-path fixtures/guard-openssl/Cargo.toml
+
+      # Out-of-process backend (PKCS#11): crypto runs in an external HSM/KMS, so
+      # build flags don't apply — passes even with a perturbing RUSTFLAGS.
+      - name: guard out-of-process ignores build flags (exit 0)
+        run: |
+          RUSTFLAGS="-C target-cpu=native" \
+            cargo fips guard --manifest-path fixtures/guard-pkcs11/Cargo.toml
 
   # Style checks. Advisory (continue-on-error) so formatting nits never block the
   # meaningful gates above; tighten to required once `cargo fmt` has been run.

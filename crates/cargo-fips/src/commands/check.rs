@@ -114,7 +114,12 @@ pub fn run(cli: &FipsCli) -> Exit {
                 config.target.module, identity.module_id
             ));
         }
-        if !identity
+        if identity.certificates.is_empty() {
+            report.info(format!(
+                "backend pins no certificate (external/out-of-process); using declared #{}",
+                config.target.certificate
+            ));
+        } else if !identity
             .certificates
             .iter()
             .any(|c| c == &config.target.certificate)
@@ -156,12 +161,10 @@ pub fn run(cli: &FipsCli) -> Exit {
     // 3. No competing, non-validated cryptographic crate may be reachable.
     if config.policy.forbid_competing_crypto {
         let mut allow = config.policy.allowed_backends.clone();
-        // A backend's own crates are never "competing".
-        allow.extend(
-            ["aws-lc-rs", "aws-lc-sys", "aws-lc-fips-sys"]
-                .iter()
-                .map(|s| s.to_string()),
-        );
+        // A detected backend's own crates (binding + sys-crates) are never "competing".
+        for (be, _) in &backends {
+            allow.extend(be.own_crates().iter().map(|s| s.to_string()));
+        }
         let competing = competing_crates(&graph, &allow);
         if competing.is_empty() {
             report.pass("no competing cryptographic crate reachable in build graph");

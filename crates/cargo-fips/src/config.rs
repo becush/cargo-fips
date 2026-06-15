@@ -14,7 +14,6 @@ pub struct FipsConfig {
     #[serde(default)]
     pub policy: Policy,
     #[serde(default)]
-    #[allow(dead_code)] // consumed by `cargo fips attest` (Phase 3)
     pub attest: Attest,
     #[serde(default)]
     pub registry: RegistrySource,
@@ -45,7 +44,7 @@ pub enum Strictness {
 }
 
 impl Strictness {
-    pub fn as_str(self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             Strictness::TestedOnly => "tested-only",
             Strictness::AllowVendorAffirmed => "allow-vendor-affirmed",
@@ -71,7 +70,6 @@ pub struct Policy {
 /// `[attest]` — evidence output settings.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-#[allow(dead_code)] // fields consumed by `cargo fips attest` (Phase 3)
 pub struct Attest {
     #[serde(default = "default_attest_format")]
     pub format: String,
@@ -81,6 +79,9 @@ pub struct Attest {
     pub provenance: bool,
     #[serde(default)]
     pub sign: bool,
+    /// cosign private key for key-based signing; keyless when absent.
+    #[serde(default)]
+    pub cosign_key: Option<PathBuf>,
 }
 
 impl Default for Attest {
@@ -90,6 +91,7 @@ impl Default for Attest {
             output: default_attest_output(),
             provenance: false,
             sign: false,
+            cosign_key: None,
         }
     }
 }

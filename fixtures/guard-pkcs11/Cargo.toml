@@ -1,0 +1,10 @@
+# Out-of-process backend fixture: crypto is offloaded to an external HSM/KMS over
+# PKCS#11, so the application binary contains no validated module and build flags
+# don't apply. `cargo fips guard` passes even with a perturbing RUSTFLAGS.
+[package]
+name = "fixture-guard-pkcs11"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]

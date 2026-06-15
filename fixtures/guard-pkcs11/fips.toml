@@ -1,0 +1,16 @@
+[target]
+# For PKCS#11, the certificate is the deployed HSM/KMS's own CMVP certificate,
+# declared by the operator. The value below is illustrative.
+certificate = "0000"
+module      = "pkcs11-external"
+version     = "external-hsm"
+allowed_oes = ["x86_64-unknown-linux-gnu"]
+strictness  = "tested-only"
+
+[policy]
+forbid_competing_crypto = true
+allowed_backends        = ["pkcs11"]
+deny_off_certificate_oe = true
+
+[registry]
+source = "builtin"

@@ -52,6 +52,9 @@ impl FipsCli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Scaffold a fips.toml by detecting the backend in the dependency graph.
+    Init(InitArgs),
+
     /// Verify the resolved build against the declared FIPS posture (primary CI gate).
     Check,
 
@@ -62,7 +65,18 @@ pub enum Command {
     Guard(GuardArgs),
 
     /// Emit a CycloneDX CBOM attestation plus a human-readable summary.
-    Attest,
+    Attest(AttestArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct InitArgs {
+    /// Output path (defaults to `<manifest dir>/fips.toml`).
+    #[arg(long, value_name = "FILE")]
+    pub output: Option<PathBuf>,
+
+    /// Overwrite an existing fips.toml.
+    #[arg(long)]
+    pub force: bool,
 }
 
 #[derive(Debug, Args)]
@@ -77,4 +91,23 @@ pub struct GuardArgs {
     /// Cargo profile to inspect (default: release).
     #[arg(long, value_name = "PROFILE")]
     pub profile: Option<String>,
+}
+
+#[derive(Debug, Args)]
+pub struct AttestArgs {
+    /// Target triple to attest (defaults to the host target).
+    #[arg(long, value_name = "TRIPLE")]
+    pub target: Option<String>,
+
+    /// Output path for the CBOM (overrides `[attest] output` in fips.toml).
+    #[arg(long, value_name = "FILE")]
+    pub output: Option<PathBuf>,
+
+    /// Sign the CBOM with cosign (overrides `[attest] sign`).
+    #[arg(long)]
+    pub sign: bool,
+
+    /// cosign private key for key-based signing (otherwise keyless).
+    #[arg(long, value_name = "FILE")]
+    pub cosign_key: Option<PathBuf>,
 }

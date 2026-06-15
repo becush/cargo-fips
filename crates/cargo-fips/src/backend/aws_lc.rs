@@ -14,6 +14,8 @@ const ANCHOR: &str = "aws-lc-rs";
 const FIPS_SYS: &str = "aws-lc-fips-sys";
 /// `sys` crate pulled in for the non-FIPS build.
 const NONFIPS_SYS: &str = "aws-lc-sys";
+/// All crates belonging to this backend.
+const FAMILY: &[&str] = &[ANCHOR, NONFIPS_SYS, FIPS_SYS];
 
 impl FipsBackend for AwsLcRs {
     fn name(&self) -> &'static str {
@@ -66,5 +68,9 @@ impl FipsBackend for AwsLcRs {
         BuildParameters {
             boundary: BoundaryKind::PrebuiltStatic,
         }
+    }
+
+    fn own_crates(&self) -> &'static [&'static str] {
+        FAMILY
     }
 }

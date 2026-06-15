@@ -8,3 +8,12 @@ repository.workspace = true
 description = "Runtime companion for cargo-fips: assert FIPS mode and record module identity at application startup."
 
 [dependencies]
+# Optional, only pulled in when the `aws-lc-rs` feature is enabled. The default
+# build is dependency-free (NullProbe only) and needs no C/FIPS toolchain.
+aws-lc-rs = { version = "1", optional = true }
+
+[features]
+# Enable `AwsLcRsProbe`. This turns on aws-lc-rs's FIPS backend
+# (`aws-lc-fips-sys`), which requires a C toolchain (cmake, a C compiler, and Go)
+# to build — the same backend a FIPS application already links.
+aws-lc-rs = ["dep:aws-lc-rs", "aws-lc-rs/fips"]

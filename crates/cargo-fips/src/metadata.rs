@@ -52,6 +52,14 @@ impl Graph {
         self.package_by_name(name).map(|p| p.version.to_string())
     }
 
+    /// The resolved root package's name and version, if the manifest is a
+    /// package (not a virtual workspace).
+    pub fn root_package(&self) -> Option<(String, String)> {
+        self.metadata
+            .root_package()
+            .map(|p| (p.name.clone(), p.version.to_string()))
+    }
+
     /// The resolved node (with enabled features) for a package id.
     fn node(&self, id: &PackageId) -> Option<&Node> {
         self.metadata

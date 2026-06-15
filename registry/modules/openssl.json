@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "_note": "Red Hat Enterprise Linux 9 - OpenSSL FIPS Provider, CMVP certificate #4857 (module/software version 3.0.7-395c1a240fbfffd8, CAVP A4807). Module name, vendor, status, level, sunset date, software version, CAVP number, and tested operating environments transcribed from the live CMVP listing for #4857, reviewed 2026-06-14. This is the platform-provided path: applications link the system OpenSSL 3 FIPS provider and inherit Red Hat's certificate and operating-environment coverage. The earlier RHEL 9.0 provider validation is CMVP #4746 (not transcribed here). The in-core integrity technique (HMAC-SHA-256) is the OpenSSL FIPS provider default and should be confirmed against the Security Policy.",
+  "_sources": [
+    "https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4857",
+    "https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4857.pdf"
+  ],
+  "module": {
+    "id": "rhel9-openssl-fips",
+    "vendor": "Red Hat, Inc.",
+    "module_type": "software",
+    "security_level": 1,
+    "integrity_technique": "HMAC-SHA-256",
+    "security_policy_url": "https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4857.pdf"
+  },
+  "certificate": {
+    "cmvp_number": "4857",
+    "status": "active",
+    "validated_versions": ["3.0.7-395c1a240fbfffd8"],
+    "sunset_date": "2029-10-28"
+  },
+  "binding": {
+    "tested_operating_environments": [
+      {
+        "id": "rhel9-x86_64-xeon",
+        "os": "Red Hat Enterprise Linux",
+        "os_version": "9",
+        "arch": "x86_64",
+        "processor": "Intel Xeon Silver 4216 (Dell PowerEdge R440)",
+        "paa_enabled": true,
+        "target_triples": ["x86_64-unknown-linux-gnu"]
+      },
+      {
+        "id": "rhel9-ppc64le-power10",
+        "os": "Red Hat Enterprise Linux",
+        "os_version": "9",
+        "arch": "ppc64le",
+        "processor": "IBM POWER10 (9080-HEX, PowerVM)",
+        "paa_enabled": true,
+        "target_triples": ["powerpc64le-unknown-linux-gnu"]
+      },
+      {
+        "id": "rhel9-s390x-z16",
+        "os": "Red Hat Enterprise Linux",
+        "os_version": "9",
+        "arch": "s390x",
+        "processor": "IBM z16 (3931-A01)",
+        "paa_enabled": true,
+        "target_triples": ["s390x-unknown-linux-gnu"]
+      }
+    ],
+    "approved_algorithms": [
+      { "name": "AES", "modes": ["CBC", "CTR", "ECB", "GCM", "XTS", "KW"], "parameters": { "key_sizes": [128, 192, 256] }, "cavp_certificate": "A4807" },
+      { "name": "SHA2", "modes": ["224", "256", "384", "512"], "parameters": {}, "cavp_certificate": "A4807" },
+      { "name": "SHA3", "modes": ["224", "256", "384", "512"], "parameters": {}, "cavp_certificate": "A4807" },
+      { "name": "HMAC", "modes": ["SHA2-256", "SHA2-384", "SHA2-512"], "parameters": {}, "cavp_certificate": "A4807" },
+      { "name": "ECDSA", "modes": ["KeyGen", "SigGen", "SigVer"], "parameters": { "curves": ["P-256", "P-384", "P-521"] }, "cavp_certificate": "A4807" },
+      { "name": "RSA", "modes": ["KeyGen", "SigGen", "SigVer"], "parameters": { "key_sizes": [2048, 3072, 4096] }, "cavp_certificate": "A4807" },
+      { "name": "Counter_DRBG", "modes": [], "parameters": {}, "cavp_certificate": "A4807" }
+    ]
+  }
+}

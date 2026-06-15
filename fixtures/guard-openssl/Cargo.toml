@@ -1,0 +1,10 @@
+# Platform-provided backend fixture: the OpenSSL 3 FIPS provider is supplied by
+# the OS, so `cargo fips guard` reports that Rust build flags do not affect the
+# validated module — it passes even with a perturbing RUSTFLAGS. guard is offline.
+[package]
+name = "fixture-guard-openssl"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]

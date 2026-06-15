@@ -1,0 +1,14 @@
+[target]
+certificate = "5041"
+module      = "wolfcrypt"
+version     = "wolfCrypt 5.2.0.1"
+allowed_oes = ["x86_64-unknown-linux-gnu"]
+strictness  = "tested-only"
+
+[policy]
+forbid_competing_crypto = true
+allowed_backends        = ["wolfcrypt"]
+deny_off_certificate_oe = true
+
+[registry]
+source = "builtin"

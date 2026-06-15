@@ -1,0 +1,10 @@
+# Source-built backend fixture: exercises `cargo fips guard`'s hard-fail path.
+# guard is offline (reads fips.toml + the resolved profile + RUSTFLAGS), so no
+# crypto dependency is needed here.
+[package]
+name = "fixture-guard-wolfcrypt"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]

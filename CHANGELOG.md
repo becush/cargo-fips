@@ -8,6 +8,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `cargo fips init` — scaffold a `fips.toml` by detecting the backend in the
+  resolved dependency graph, pre-filling the module, certificate, validated
+  version, and the certificate's tested operating environments from the registry.
 - `cargo fips check` — primary CI gate for the `aws-lc-rs` backend: validated
   backend detection, FIPS-mode verification, competing-crypto detection, and
   declared-vs-validated version checks.
@@ -15,7 +18,25 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   vendor-affirmable / off-certificate) from the target triple.
 - `cargo fips guard` — build-flag guard over `RUSTFLAGS` and the resolved profile,
   with per-backend severity (source-built vs prebuilt-static).
+- `cargo fips attest` — CycloneDX 1.6 CBOM emission plus a draft SP 800-53 SC-13
+  control narrative, with optional build provenance (toolchain, git commit) and
+  optional cosign signing (key-based offline, or keyless via Sigstore), delegated
+  to the cosign binary.
 - `cargo-fips-registry` — typed certificate registry; built-in data for CMVP
-  certificate #4816 (AWS-LC FIPS), transcribed from the Security Policy.
-- `cargo-fips-runtime` — runtime FIPS-assertion companion (skeleton).
-- CI workflow: build, test, and exit-code assertions against fixtures.
+  certificate #4816 (AWS-LC FIPS), transcribed from the Security Policy. Registry
+  files may now hold multiple certificates per module.
+- wolfCrypt backend adapter (source-built boundary) + registry entries for CMVP
+  #4718 (v5.2.1, CAVP A4308) and #5041 (v5.2.0.1, CAVP A2461), proving the
+  adapter model is not vendor-specific and exercising `guard`'s hard-fail path.
+- OpenSSL 3 provider backend adapter (platform-provided boundary) + registry
+  entry for the RHEL 9 OpenSSL FIPS Provider, CMVP #4857 (3.0.7-395c1a240fbfffd8,
+  CAVP A4807).
+- PKCS#11 backend adapter (out-of-process boundary) for offload to an external
+  HSM/KMS, completing all four boundary kinds. `check` now handles backends that
+  pin no certificate (the certificate is operator-declared for this path).
+- `cargo-fips-runtime` — runtime FIPS-assertion companion: `FipsProbe` trait,
+  `NullProbe`, `assert_fips!`, and (behind the `aws-lc-rs` feature) `AwsLcRsProbe`
+  calling `aws_lc_rs::try_fips_mode()`.
+- CI workflow: build, test, and exit-code assertions against fixtures. The
+  emitted CBOM is validated against the official CycloneDX 1.6 JSON schema, and
+  the CBOM now declares its `$schema`.

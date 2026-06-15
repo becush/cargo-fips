@@ -3,4 +3,5 @@
 pub mod attest;
 pub mod check;
 pub mod guard;
+pub mod init;
 pub mod oe;

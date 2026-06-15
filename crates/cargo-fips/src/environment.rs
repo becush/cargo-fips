@@ -14,7 +14,6 @@ use cargo_fips_registry::RegistryEntry;
 /// Parsed components of a Rust target triple (`<arch>-<vendor>-<sys>[-<abi>]`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TargetTriple {
-    pub raw: String,
     pub arch: String,
     /// The OS/system family component (e.g. `linux`, `windows`, `darwin`).
     pub os_family: String,
@@ -29,11 +28,7 @@ impl TargetTriple {
             2 => parts[1].to_string(),
             _ => parts[2].to_string(),
         };
-        Self {
-            raw: triple.to_string(),
-            arch,
-            os_family,
-        }
+        Self { arch, os_family }
     }
 }
 
@@ -60,6 +55,17 @@ pub enum OeClass {
     OffCertificate,
 }
 
+impl OeClass {
+    /// Stable lowercase label.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            OeClass::Tested => "tested",
+            OeClass::VendorAffirmable => "vendor-affirmable",
+            OeClass::OffCertificate => "off-certificate",
+        }
+    }
+}
+
 /// Classify a target triple against a certificate's tested operating environments.
 ///
 /// - exact triple match → [`OeClass::Tested`]
@@ -75,7 +81,7 @@ pub fn classify(triple: &str, entry: &RegistryEntry) -> OeClass {
         .flat_map(|oe| oe.target_triples.iter().map(|s| s.as_str()))
         .collect();
 
-    if tested_triples.iter().any(|tt| *tt == triple) {
+    if tested_triples.contains(&triple) {
         return OeClass::Tested;
     }
 

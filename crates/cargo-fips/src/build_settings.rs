@@ -296,4 +296,12 @@ mod tests {
         assert_eq!(r.violations(), 0);
         assert!(r.findings().iter().any(|f| f.message.contains("platform-provided")));
     }
+
+    #[test]
+    fn out_of_process_ignores_flags() {
+        let s = settings_with_rustflags(&["-C", "target-cpu=native"]);
+        let r = evaluate(&s, BoundaryKind::OutOfProcess);
+        assert_eq!(r.violations(), 0);
+        assert!(r.findings().iter().any(|f| f.message.contains("out-of-process")));
+    }
 }

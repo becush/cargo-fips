@@ -21,11 +21,12 @@ Early scaffold (Phase 0 + full CLI skeleton).
 
 | Subcommand | Status |
 |---|---|
+| `cargo fips init` | **implemented** (scaffold fips.toml from the graph) |
 | `cargo fips check` | **implemented** for the `aws-lc-rs` backend |
 | `cargo fips oe` | **implemented** (target-triple classification) |
 | `cargo fips guard` | **implemented** (RUSTFLAGS + profile inspection) |
-| `cargo fips attest` | stub (Phase 3) |
-| `cargo-fips-runtime` | API skeleton (Phase 4) |
+| `cargo fips attest` | **implemented** (CycloneDX 1.6 CBOM + SC-13 narrative) |
+| `cargo-fips-runtime` | **implemented** (`NullProbe`; `AwsLcRsProbe` via feature) |
 
 What `check` verifies today (spec §10.1):
 
@@ -52,7 +53,10 @@ cargo-fips/
 ├─ Cargo.toml                       # workspace
 ├─ cargo-fips-spec.md               # the design spec
 ├─ registry/
-│  └─ modules/aws-lc-fips.json      # built-in registry data (cert #4816)
+│  └─ modules/                      # built-in registry data
+│     ├─ aws-lc-fips.json           #   cert #4816
+│     ├─ wolfcrypt.json             #   certs #4718, #5041
+│     └─ openssl.json               #   cert #4857 (RHEL 9 provider)
 ├─ crates/
 │  ├─ cargo-fips/                   # the CLI (the `cargo fips` subcommand)
 │  ├─ cargo-fips-registry/          # typed registry model + loader (shared lib)
@@ -73,7 +77,11 @@ Requires a stable Rust toolchain (`rustup`), Rust 1.74+.
 cargo build --workspace
 cargo test  --workspace
 
-# Run the subcommand against a sample project.
+# Scaffold a fips.toml by detecting the backend in a project's graph.
+cargo run -p cargo-fips -- fips init \
+    --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml --output /tmp/fips.toml
+
+# Run the primary gate against a sample project.
 cargo run -p cargo-fips -- fips check \
     --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml
 
@@ -157,6 +165,63 @@ RUSTFLAGS="-C target-cpu=native" \
 Guard is defense-in-depth, never a guarantee. Like `oe`, it runs offline (no
 `cargo metadata`).
 
+### Attestation
+
+`cargo fips attest` emits a [CycloneDX 1.6](https://cyclonedx.org) CBOM —
+the validated module plus each approved algorithm as crypto-asset components with
+`certificationLevel` — and prints a draft SP 800-53 SC-13 (Cryptographic
+Protection) control narrative. Build provenance (toolchain, git commit) is
+included when `[attest] provenance = true`.
+
+```sh
+cargo fips attest \
+    --manifest-path fixtures/pass-aws-lc-fips/Cargo.toml \
+    --output target/fips/attestation.cdx.json
+```
+
+The CBOM is embeddable in a broader SBOM or shipped as a linked artifact (e.g.
+written into a container image). It declares its `$schema`, and CI validates
+every emitted CBOM against the official CycloneDX 1.6 JSON schema.
+
+Signing is delegated to [cosign](https://github.com/sigstore/cosign) (the tool
+does not reimplement signing). Set `[attest] sign = true` or pass `--sign`:
+
+```sh
+# key-based, offline (no transparency-log upload)
+cargo fips attest --manifest-path . --sign --cosign-key cosign.key
+# keyless (Sigstore/Fulcio + Rekor) when no key is given — needs ambient OIDC
+cargo fips attest --manifest-path . --sign
+```
+
+This writes a detached `*.sig` next to the CBOM (plus a certificate and bundle in
+keyless mode). CI signs with an ephemeral key and verifies the result with
+`cosign verify-blob`.
+
+### Runtime assertion (`cargo-fips-runtime`)
+
+`check`/`oe`/`guard`/`attest` prove a build *was configured* for FIPS. FIPS is
+also a *runtime* property, so the companion crate asserts it at startup. The
+default build is dependency-free (`NullProbe` → `Unknown`); enable the `aws-lc-rs`
+feature for a real probe that calls `aws_lc_rs::try_fips_mode()`:
+
+```toml
+[dependencies]
+cargo-fips-runtime = { version = "0.0.1", features = ["aws-lc-rs"] }
+```
+
+```rust
+use cargo_fips_runtime::{assert_fips, AwsLcRsProbe, OnFailure};
+
+fn main() {
+    // Aborts startup unless the linked AWS-LC is in FIPS-approved mode.
+    assert_fips!(AwsLcRsProbe, OnFailure::Panic);
+}
+```
+
+`FipsProbe` is the integration point a future unified provider trait (`is_fips()`)
+would implement. The `aws-lc-rs` feature pulls aws-lc-rs's FIPS backend, which
+needs a C toolchain (cmake, a C compiler, Go) to build.
+
 ## Configuration: `fips.toml`
 
 A version-controlled manifest at the project root declares the intended FIPS
@@ -177,14 +242,32 @@ allowed_backends        = ["aws-lc-rs"]
 source = "builtin"
 ```
 
-## The registry
+## Backends and the registry
+
+Four backend adapters ship today, covering **every boundary kind in the spec**:
+
+| Backend | Module | Boundary | Certificate(s) |
+|---|---|---|---|
+| `aws-lc-rs` | AWS-LC FIPS | prebuilt-static | #4816 |
+| wolfSSL Rust crates | wolfCrypt FIPS | source-built | #4718, #5041 |
+| `openssl` (system provider) | RHEL 9 OpenSSL FIPS provider | platform-provided | #4857 |
+| `cryptoki` / PKCS#11 | external HSM / KMS | out-of-process | operator-declared |
+
+The boundary kind drives `guard`. For the same perturbing flag (`-C target-cpu`):
+
+- **prebuilt-static** (AWS-LC) → **warning** (the vendored artifact isn't recompiled);
+- **source-built** (wolfCrypt) → **hard failure** (it would shift the in-core integrity hash);
+- **platform-provided** (OpenSSL provider) → **not applicable** (the OS-supplied `fips.so` is untouched) → pass;
+- **out-of-process** (PKCS#11 HSM/KMS) → **not applicable** (no validated module in the binary) → pass.
 
 `registry/modules/*.json` is the curated, machine-readable form of facts
-otherwise scattered across CMVP Security Policy PDFs. The shipped
-`aws-lc-fips.json` carries **verified** facts for certificate #4816 (module name,
-vendor, status, level, validation/sunset dates, Security Policy URL — reviewed
-2026-06-14); its tested-OE and algorithm details are seed data to be reconciled
-against the Security Policy (see the `_note` field).
+otherwise scattered across CMVP Security Policy PDFs (one file may hold multiple
+certificates for a module). The shipped data carries **verified** facts —
+reviewed 2026-06-14 — for AWS-LC #4816; wolfCrypt #4718 (v5.2.1, CAVP A4308) and
+#5041 (v5.2.0.1, CAVP A2461); and the RHEL 9 OpenSSL FIPS provider #4857
+(3.0.7-395c1a240fbfffd8, CAVP A4807). Each entry has `_sources` provenance and a
+dated `_note`; where a full Security Policy table wasn't transcribed, the `_note`
+says so.
 
 ## Contributing
 
