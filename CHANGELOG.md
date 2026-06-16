@@ -45,6 +45,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `CryptoProvider::fips()`, or an FFI check) via `from_status(Option<bool>)`, so it
   pulls no new dependency. `check` now reports OpenSSL FIPS mode as
   runtime-determined rather than guessing from the build graph.
+- `readiness()` in `cargo-fips-runtime` — a fail-closed readiness decision over any
+  `FipsProbe` for wiring into a `/healthz`/readiness probe. Ready only when FIPS is
+  provably active (`Disabled` and `Unknown` are both not-ready), so an orchestrator
+  drains traffic from instances that cannot prove FIPS. Dependency-free.
+- `record()` in `cargo-fips-runtime` (behind the new `tracing` feature) — emits the
+  runtime FIPS status as a structured `tracing` event at startup, severity tracking
+  the state, for audit trails and log-based alerting without a new metrics pipeline.
 - CI workflow: build, test, and exit-code assertions against fixtures. The
   emitted CBOM is validated against the official CycloneDX 1.6 JSON schema, and
   the CBOM now declares its `$schema`.

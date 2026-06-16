@@ -41,6 +41,22 @@
 //! // Panics unless the linked AWS-LC is in FIPS-approved mode.
 //! assert_fips!(AwsLcRsProbe, OnFailure::Panic);
 //! ```
+//!
+//! # Reporting
+//!
+//! The same probe feeds existing operational surfaces:
+//!
+//! - [`readiness`] turns a probe into a fail-closed readiness decision to wire
+//!   into a service's `/healthz` probe — *enforcement*: the orchestrator drains
+//!   traffic from any instance that cannot prove FIPS is active.
+//! - [`record`] (behind the `tracing` feature) emits a structured startup event
+//!   into the application's existing `tracing` subscriber — *evidence*: a
+//!   timestamped audit record, with severity tracking the state.
+//!
+//! Both are boot-time/sampled views, because OpenSSL FIPS mode rarely changes
+//! within a process. A continuous integrity monitor (alerting the moment a
+//! self-test fails) needs OpenSSL's self-test callback, which the Rust bindings
+//! do not yet surface — tracked as upstream work, not faked with a constant gauge.
 
 #![forbid(unsafe_code)]
 
@@ -218,6 +234,107 @@ pub fn assert_fips_with(probe: &dyn FipsProbe, on_failure: OnFailure) -> FipsSta
     state
 }
 
+/// Outcome of a fail-closed readiness check.
+///
+/// Returned by [`readiness`] for wiring a `FipsProbe` into a service's
+/// readiness/`/healthz` endpoint.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Readiness {
+    /// Whether the service should accept traffic. `true` only when FIPS is
+    /// provably active.
+    pub ready: bool,
+    /// The observed state behind the decision.
+    pub state: FipsState,
+    /// Human-readable reason, suitable for a health-check response body.
+    pub detail: String,
+}
+
+/// Fail-closed FIPS readiness, for an orchestrated `/healthz`/readiness probe.
+///
+/// Unlike [`assert_fips_with`] (which only *warns* on [`FipsState::Unknown`] so
+/// a missing probe never crashes a process), this gate is strict: it is
+/// `ready` **only** when the module reports [`FipsState::Enabled`]. Both
+/// [`FipsState::Disabled`] and [`FipsState::Unknown`] are not-ready, so an
+/// orchestrator drains traffic from any instance that cannot *prove* FIPS is
+/// active — enforcement, not just logging.
+///
+/// ```
+/// use cargo_fips_runtime::{readiness, NullProbe, OpenSslProbe};
+///
+/// // No probe wired up → fail closed.
+/// assert!(!readiness(&NullProbe).ready);
+///
+/// // Provider reports FIPS active → ready.
+/// assert!(readiness(&OpenSslProbe::from_status(Some(true))).ready);
+/// ```
+///
+/// Mapping it onto an HTTP probe (framework-agnostic — no web dep is pulled in):
+///
+/// ```ignore
+/// async fn healthz() -> (StatusCode, String) {
+///     let r = readiness(&OpenSslProbe::from_status(Some(ossl::is_fips())));
+///     let code = if r.ready { StatusCode::OK } else { StatusCode::SERVICE_UNAVAILABLE };
+///     (code, r.detail)
+/// }
+/// ```
+pub fn readiness(probe: &dyn FipsProbe) -> Readiness {
+    let state = probe.state();
+    let detail = match state {
+        FipsState::Enabled => "fips: active".to_string(),
+        FipsState::Disabled => "fips: module loaded but NOT operating in FIPS mode".to_string(),
+        FipsState::Unknown => "fips: state could not be determined".to_string(),
+    };
+    Readiness {
+        ready: matches!(state, FipsState::Enabled),
+        state,
+        detail,
+    }
+}
+
+/// Emit the runtime FIPS status into the [`tracing`] pipeline as a structured
+/// event (available with the `tracing` feature).
+///
+/// This is the audit-trail companion to [`assert_fips_with`]: call it once at
+/// startup to land a timestamped, structured record (module, certificate, and
+/// observed state) in whatever subscriber the application already runs. Severity
+/// tracks the state — `info` when enabled, `warn` when unknown, `error` when the
+/// module is loaded but not in FIPS mode — so existing log-based alerting can key
+/// off it without a new metrics pipeline.
+///
+/// FIPS mode rarely changes within a process, so this is a boot-time record, not
+/// a continuous monitor. A genuinely live integrity signal (a self-test failure
+/// flipping the module into an error state) needs OpenSSL's self-test callback,
+/// which the bindings do not yet surface.
+#[cfg(feature = "tracing")]
+pub fn record(probe: &dyn FipsProbe) {
+    let report = probe.identity();
+    let module = report.module.as_deref().unwrap_or("unknown");
+    let certificate = report.certificate.as_deref().unwrap_or("unknown");
+    match report.state {
+        FipsState::Enabled => tracing::info!(
+            target: "cargo_fips",
+            module,
+            certificate,
+            state = %report.state,
+            "fips module active"
+        ),
+        FipsState::Disabled => tracing::error!(
+            target: "cargo_fips",
+            module,
+            certificate,
+            state = %report.state,
+            "fips module loaded but NOT operating in FIPS mode"
+        ),
+        FipsState::Unknown => tracing::warn!(
+            target: "cargo_fips",
+            module,
+            certificate,
+            state = %report.state,
+            "fips state could not be determined"
+        ),
+    }
+}
+
 /// Assert FIPS mode at startup.
 ///
 /// - `assert_fips!()` uses [`NullProbe`] and [`OnFailure::Panic`].
@@ -307,6 +424,27 @@ mod tests {
                 .as_deref(),
             Some("4857")
         );
+    }
+
+    #[test]
+    fn readiness_is_fail_closed() {
+        assert!(readiness(&AlwaysEnabled).ready);
+        // Both Disabled and Unknown must fail closed.
+        assert!(!readiness(&AlwaysDisabled).ready);
+        let unknown = readiness(&NullProbe);
+        assert!(!unknown.ready);
+        assert_eq!(unknown.state, FipsState::Unknown);
+        assert!(!unknown.detail.is_empty());
+    }
+
+    #[cfg(feature = "tracing")]
+    #[test]
+    fn record_does_not_panic() {
+        // With no subscriber installed the events are dropped; the call must
+        // still be infallible.
+        record(&NullProbe);
+        record(&AlwaysEnabled);
+        record(&AlwaysDisabled);
     }
 }
 

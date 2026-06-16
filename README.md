@@ -197,6 +197,35 @@ fn main() {
 would implement. The `aws-lc-rs` feature pulls aws-lc-rs's FIPS backend, which
 needs a C toolchain (cmake, a C compiler, Go) to build.
 
+#### Reporting into your existing pipeline
+
+The same probe feeds two operational surfaces, so you don't bolt on a parallel
+one:
+
+- **Readiness gate (enforcement).** `readiness(&probe)` returns a fail-closed
+  decision — ready *only* when FIPS is provably active (`Disabled` **and**
+  `Unknown` are not-ready). Wire it into a `/healthz` probe so your orchestrator
+  drains traffic from any instance that can't prove FIPS, rather than serving it.
+
+  ```rust
+  // Framework-agnostic: map `ready` onto your own 200/503. No web dep is pulled in.
+  let r = cargo_fips_runtime::readiness(&probe);
+  let code = if r.ready { 200 } else { 503 }; // r.detail is a ready-made body
+  ```
+
+- **Startup record (evidence).** With the `tracing` feature, `record(&probe)`
+  emits one structured event into the subscriber you already run — severity
+  tracks the state (`info`/`warn`/`error`), so existing log alerting keys off it
+  with no new infrastructure.
+
+A Prometheus-style gauge is deliberately **not** included yet. OpenSSL FIPS mode
+is a near-static boolean for a process's lifetime, so a gauge fed by `is_fips()`
+would read a constant `1` and show a green tile while *not* watching the thing
+that actually breaks at runtime — a self-test failure. A useful gauge needs
+OpenSSL's self-test callback (`OSSL_SELF_TEST_set_callback`), which the Rust
+bindings don't expose yet; that's tracked as upstream work rather than shipped as
+a constant.
+
 ## Status
 
 Experimental (v0.0.x): all subcommands are implemented and CI-tested, but the
@@ -210,7 +239,7 @@ a compliance decision.
 | `cargo fips oe` | **implemented** (target-triple classification) |
 | `cargo fips guard` | **implemented** (RUSTFLAGS + profile inspection) |
 | `cargo fips attest` | **implemented** (CycloneDX 1.6 CBOM + SC-13 narrative) |
-| `cargo-fips-runtime` | **implemented** (`NullProbe`; `OpenSslProbe`; `AwsLcRsProbe` via feature) |
+| `cargo-fips-runtime` | **implemented** (probes: `NullProbe`/`OpenSslProbe`/`AwsLcRsProbe`; `readiness()` gate; `record()` via `tracing` feature) |
 
 What `check` verifies today (spec §10.1):
 

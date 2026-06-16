@@ -23,6 +23,12 @@ cargo clippy --workspace --all-targets -- -D warnings
 bold "tests — cargo test --workspace"
 cargo test --workspace
 
+# The runtime `tracing` feature is off by default, so exercise it explicitly to
+# keep `record()` compiling. (We avoid `--all-features`, which would pull the
+# aws-lc-rs FIPS backend and its C/Go toolchain.)
+bold "tests — cargo-fips-runtime --features tracing"
+cargo test -p cargo-fips-runtime --features tracing
+
 bold "build cargo-fips (for exit-code checks)"
 cargo build -q -p cargo-fips
 FIPS="target/debug/cargo-fips"
