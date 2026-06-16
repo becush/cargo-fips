@@ -105,7 +105,11 @@ pub fn run(cli: &FipsCli) -> Exit {
                 ));
             }
             FipsModeStatus::Unknown => {
-                report.warn(format!("{}: could not determine FIPS mode", be.name()));
+                report.warn(format!(
+                    "{}: FIPS mode is runtime-determined and cannot be proven from the build — \
+                     assert it at startup with cargo-fips-runtime",
+                    be.name()
+                ));
             }
         }
 

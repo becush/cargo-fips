@@ -302,6 +302,15 @@ The boundary kind drives `guard`. For the same perturbing flag (`-C target-cpu`)
 - **platform-provided** (OpenSSL provider) → **not applicable** (the OS-supplied `fips.so` is untouched) → pass;
 - **out-of-process** (PKCS#11 HSM/KMS) → **not applicable** (no validated module in the binary) → pass.
 
+> **Build-time vs. runtime.** FIPS *mode* is fundamentally a runtime property. For
+> `aws-lc-rs` the `fips` feature links the validated module at build time, so
+> `check` can verify a lot. But for the **platform-provided** (OpenSSL) and
+> **out-of-process** (PKCS#11) backends, mode is decided at process start (provider
+> config, `OPENSSL_CONF`), so `check` proves only *configuration hygiene* — backend
+> linked, not vendored, no competing crypto — **not** that FIPS mode is on. That
+> proof is the job of the runtime assertion
+> ([`cargo-fips-runtime`](#runtime-assertion-cargo-fips-runtime)).
+
 `registry/modules/*.json` is the curated, machine-readable form of facts
 otherwise scattered across CMVP Security Policy PDFs (one file may hold multiple
 certificates for a module). The shipped data carries **verified** facts —

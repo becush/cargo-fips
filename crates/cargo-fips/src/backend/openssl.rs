@@ -12,10 +12,14 @@
 //! binding (spun out of the kryoptic project), or a rustls-over-OpenSSL provider
 //! (`rustls-ossl` / `rustls-openssl`).
 //!
-//! FIPS mode is a runtime/platform property invisible to Cargo, so
-//! `fips_enabled` reports `Unknown`. A `vendored` build of the `openssl` crate
-//! would compile a *separate* OpenSSL and bypass the platform provider entirely;
-//! that is surfaced as a distinct signal.
+//! FIPS mode here is **purely dynamic** — decided at process start by which
+//! providers are loaded and whether the default property query enforces
+//! `fips=yes`. The same binary runs FIPS or non-FIPS depending on runtime
+//! configuration, so `check` *cannot* prove it from the build and `fips_enabled`
+//! reports `Unknown`; the real proof is a runtime assertion (see
+//! `cargo-fips-runtime`). What `check` *can* catch is a `vendored` build of the
+//! `openssl` crate, which compiles a *separate* OpenSSL and bypasses the platform
+//! provider entirely — surfaced here as a distinct signal.
 
 use crate::backend::{
     BoundaryKind, BuildParameters, DetectedBackend, FipsBackend, FipsModeStatus, ModuleIdentity,
