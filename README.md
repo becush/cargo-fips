@@ -25,61 +25,6 @@ validated module.
 
 See [`cargo-fips-spec.md`](./cargo-fips-spec.md) for the full design.
 
-## Status
-
-Experimental (v0.0.x): all subcommands are implemented and CI-tested, but the
-registry is partly seed data (see the note above), so this isn't yet a basis for
-a compliance decision.
-
-| Subcommand | Status |
-|---|---|
-| `cargo fips init` | **implemented** (scaffold fips.toml from the graph) |
-| `cargo fips check` | **implemented** for the `aws-lc-rs` backend |
-| `cargo fips oe` | **implemented** (target-triple classification) |
-| `cargo fips guard` | **implemented** (RUSTFLAGS + profile inspection) |
-| `cargo fips attest` | **implemented** (CycloneDX 1.6 CBOM + SC-13 narrative) |
-| `cargo-fips-runtime` | **implemented** (`NullProbe`; `AwsLcRsProbe` via feature) |
-
-What `check` verifies today (spec §10.1):
-
-1. a known validated backend is present in the dependency graph;
-2. its FIPS mode is **actually enabled** (for `aws-lc-rs`, that the `fips`
-   feature / `aws-lc-fips-sys` is in the resolved graph);
-3. no competing, non-validated crypto crate is reachable (a curated heuristic);
-4. the declared module/version is validated by the claimed certificate, per the
-   built-in registry.
-
-It fails closed and follows a fixed exit-code convention (spec §10.6):
-
-| Code | Meaning |
-|---|---|
-| `0` | Pass — no policy violation detected |
-| `1` | Policy violation — drift from declared state |
-| `2` | Configuration or usage error (e.g. missing `fips.toml`) |
-| `3` | Registry data unavailable for the requested certificate |
-
-## Workspace layout
-
-```
-cargo-fips/
-├─ Cargo.toml                       # workspace
-├─ cargo-fips-spec.md               # the design spec
-├─ registry/
-│  └─ modules/                      # built-in registry data
-│     ├─ aws-lc-fips.json           #   cert #4816
-│     ├─ wolfcrypt.json             #   certs #4718, #5041
-│     └─ openssl.json               #   cert #4857 (RHEL 9 provider)
-├─ crates/
-│  ├─ cargo-fips/                   # the CLI (the `cargo fips` subcommand)
-│  ├─ cargo-fips-registry/          # typed registry model + loader (shared lib)
-│  └─ cargo-fips-runtime/           # runtime FIPS-assertion companion (lib)
-├─ fixtures/                        # sample projects CI runs `check` against
-│  ├─ pass-aws-lc-fips/             # → exit 0
-│  ├─ fail-fips-off/                # → exit 1
-│  └─ fail-competing-crypto/        # → exit 1
-└─ .github/workflows/ci.yml         # build + test + e2e exit-code assertions
-```
-
 ## Quickstart
 
 Requires a stable Rust toolchain (`rustup`), Rust 1.74+.
@@ -121,6 +66,9 @@ cargo fips check  —  certificate #4816 (aws-lc-fips), tested-only
 `cargo fips check` only runs `cargo metadata` (dependency-graph resolution); it
 does **not** compile the C-backed crypto crates, so it stays fast and needs no
 crypto build toolchain.
+
+To run it against **your own** project rather than the bundled fixtures, see
+[Using it on your own project](#using-it-on-your-own-project).
 
 ### Operating-environment classification
 
@@ -234,6 +182,83 @@ fn main() {
 would implement. The `aws-lc-rs` feature pulls aws-lc-rs's FIPS backend, which
 needs a C toolchain (cmake, a C compiler, Go) to build.
 
+## Status
+
+Experimental (v0.0.x): all subcommands are implemented and CI-tested, but the
+registry is partly seed data (see the note above), so this isn't yet a basis for
+a compliance decision.
+
+| Subcommand | Status |
+|---|---|
+| `cargo fips init` | **implemented** (scaffold fips.toml from the graph) |
+| `cargo fips check` | **implemented** for the `aws-lc-rs` backend |
+| `cargo fips oe` | **implemented** (target-triple classification) |
+| `cargo fips guard` | **implemented** (RUSTFLAGS + profile inspection) |
+| `cargo fips attest` | **implemented** (CycloneDX 1.6 CBOM + SC-13 narrative) |
+| `cargo-fips-runtime` | **implemented** (`NullProbe`; `AwsLcRsProbe` via feature) |
+
+What `check` verifies today (spec §10.1):
+
+1. a known validated backend is present in the dependency graph;
+2. its FIPS mode is **actually enabled** (for `aws-lc-rs`, that the `fips`
+   feature / `aws-lc-fips-sys` is in the resolved graph);
+3. no competing, non-validated crypto crate is reachable (a curated heuristic);
+4. the declared module/version is validated by the claimed certificate, per the
+   built-in registry.
+
+It fails closed and follows a fixed exit-code convention (spec §10.6):
+
+| Code | Meaning |
+|---|---|
+| `0` | Pass — no policy violation detected |
+| `1` | Policy violation — drift from declared state |
+| `2` | Configuration or usage error (e.g. missing `fips.toml`) |
+| `3` | Registry data unavailable for the requested certificate |
+
+## Workspace layout
+
+```
+cargo-fips/
+├─ Cargo.toml                       # workspace
+├─ cargo-fips-spec.md               # the design spec
+├─ registry/
+│  └─ modules/                      # built-in registry data
+│     ├─ aws-lc-fips.json           #   cert #4816
+│     ├─ wolfcrypt.json             #   certs #4718, #5041
+│     └─ openssl.json               #   cert #4857 (RHEL 9 provider)
+├─ crates/
+│  ├─ cargo-fips/                   # the CLI (the `cargo fips` subcommand)
+│  ├─ cargo-fips-registry/          # typed registry model + loader (shared lib)
+│  └─ cargo-fips-runtime/           # runtime FIPS-assertion companion (lib)
+├─ fixtures/                        # sample projects CI runs `check` against
+│  ├─ pass-aws-lc-fips/             # → exit 0
+│  ├─ fail-fips-off/                # → exit 1
+│  └─ fail-competing-crypto/        # → exit 1
+└─ .github/workflows/ci.yml         # build + test + e2e exit-code assertions
+```
+
+## Using it on your own project
+
+Install it, point it at your workspace, and let `init` scaffold the manifest:
+
+```sh
+cargo install --git https://github.com/becush/cargo-fips cargo-fips
+
+cd your-project
+cargo fips init      # scaffold fips.toml from your dependency graph — review it
+cargo fips check     # gate: backend present, FIPS mode on, no competing crypto, version matches
+cargo fips oe        # classify your target(s) against the certificate's tested OEs
+cargo fips guard     # flag build flags that could perturb the boundary
+cargo fips attest --output target/fips/attestation.cdx.json   # emit the CBOM (+ --sign to cosign it)
+```
+
+From outside the repo, add `--manifest-path /path/to/Cargo.toml` to any command.
+
+The first run on a real project is often *not* a clean pass — `check` may flag
+non-validated crypto crates in your dependency graph, or report no validated
+backend if the one you intend isn't actually linked. That gap between your
+declared posture and the resolved build is exactly what it's there to surface.
+
 ## Configuration: `fips.toml`
 
 A version-controlled manifest at the project root declares the intended FIPS
@@ -264,6 +289,11 @@ Four backend adapters ship today, covering **every boundary kind in the spec**:
 | wolfSSL Rust crates | wolfCrypt FIPS | source-built | #4718, #5041 |
 | `openssl` / `ossl` / `rustls-ossl` | RHEL 9 OpenSSL FIPS provider | platform-provided | #4857 |
 | `cryptoki` / PKCS#11 | external HSM / KMS | out-of-process | operator-declared |
+
+The `openssl` adapter covers any Rust route to the system OpenSSL FIPS provider:
+the classic `openssl`/`openssl-sys` bindings, the newer `ossl` binding (spun out
+of [kryoptic](https://github.com/latchset/kryoptic)), and the rustls-over-OpenSSL
+providers (`rustls-ossl` / `rustls-openssl`).
 
 The boundary kind drives `guard`. For the same perturbing flag (`-C target-cpu`):
 
