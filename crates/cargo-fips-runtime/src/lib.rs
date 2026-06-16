@@ -47,16 +47,19 @@
 //! The same probe feeds existing operational surfaces:
 //!
 //! - [`readiness`] turns a probe into a fail-closed readiness decision to wire
-//!   into a service's `/healthz` probe — *enforcement*: the orchestrator drains
+//!   into a service's `/healthz` probe (enforcement): the orchestrator drains
 //!   traffic from any instance that cannot prove FIPS is active.
 //! - [`record`] (behind the `tracing` feature) emits a structured startup event
-//!   into the application's existing `tracing` subscriber — *evidence*: a
+//!   into the application's existing `tracing` subscriber (evidence): a
 //!   timestamped audit record, with severity tracking the state.
 //!
-//! Both are boot-time/sampled views, because OpenSSL FIPS mode rarely changes
-//! within a process. A continuous integrity monitor (alerting the moment a
-//! self-test fails) needs OpenSSL's self-test callback, which the Rust bindings
-//! do not yet surface — tracked as upstream work, not faked with a constant gauge.
+//! Both are startup/sampled views, because OpenSSL FIPS mode is effectively a
+//! startup property that holds for the life of the process. There is deliberately
+//! no continuous gauge: a FIPS self-test failure puts the module into a hard error
+//! state that takes the process down, so ordinary crash alerting already covers
+//! it. The state actually worth catching is the silent one, an app that comes up
+//! without the FIPS provider and quietly runs non-FIPS crypto, which is exactly
+//! what [`readiness`] and `is_fips()` catch.
 
 #![forbid(unsafe_code)]
 
@@ -297,14 +300,15 @@ pub fn readiness(probe: &dyn FipsProbe) -> Readiness {
 /// This is the audit-trail companion to [`assert_fips_with`]: call it once at
 /// startup to land a timestamped, structured record (module, certificate, and
 /// observed state) in whatever subscriber the application already runs. Severity
-/// tracks the state — `info` when enabled, `warn` when unknown, `error` when the
-/// module is loaded but not in FIPS mode — so existing log-based alerting can key
+/// tracks the state (`info` when enabled, `warn` when unknown, `error` when the
+/// module is loaded but not in FIPS mode), so existing log-based alerting can key
 /// off it without a new metrics pipeline.
 ///
-/// FIPS mode rarely changes within a process, so this is a boot-time record, not
-/// a continuous monitor. A genuinely live integrity signal (a self-test failure
-/// flipping the module into an error state) needs OpenSSL's self-test callback,
-/// which the bindings do not yet surface.
+/// FIPS mode is effectively a startup property that holds for the life of the
+/// process, so this is a boot-time record rather than a continuous monitor. There
+/// isn't a soft runtime signal to add either: a self-test failure puts the module
+/// into a hard error state that crashes the process, which ordinary crash alerting
+/// already catches.
 #[cfg(feature = "tracing")]
 pub fn record(probe: &dyn FipsProbe) {
     let report = probe.identity();
