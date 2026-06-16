@@ -16,6 +16,9 @@
 //! - [`AwsLcRsProbe`] (behind the `aws-lc-rs` feature) calls
 //!   `aws_lc_rs::try_fips_mode()` to report the live state of the linked AWS-LC
 //!   module (CMVP certificate #4816).
+//! - [`OpenSslProbe`] consumes a provider's runtime FIPS status (e.g. `ossl`'s
+//!   `is_fips()` or a rustls `CryptoProvider::fips()`) — OpenSSL FIPS mode is
+//!   decided dynamically at process start, not at build time (cert #4857).
 //!
 //! Other backends implement [`FipsProbe`] the same way; this trait is the hook a
 //! future unified provider abstraction (`is_fips()`) would satisfy.
@@ -135,6 +138,54 @@ impl FipsProbe for AwsLcRsProbe {
     }
 }
 
+/// A [`FipsProbe`] for the OpenSSL 3 FIPS provider (e.g. CMVP certificate #4857).
+///
+/// For OpenSSL, FIPS mode is **dynamic** — decided at process start by which
+/// providers are loaded and whether the default property query enforces
+/// `fips=yes`. There is no build-time fact to read, so this probe takes the
+/// answer as input rather than linking an OpenSSL binding itself: feed it the
+/// runtime status from whatever binding the application already uses — `ossl`'s
+/// `is_fips()`, a rustls `CryptoProvider::fips()`, or your own
+/// `EVP_default_properties_is_fips_enabled` + `OSSL_PROVIDER_available(.., "fips")`
+/// check. `None` means "could not determine" → [`FipsState::Unknown`].
+///
+/// ```
+/// use cargo_fips_runtime::{FipsProbe, FipsState, OpenSslProbe};
+///
+/// // e.g. OpenSslProbe::from_status(Some(ossl::is_fips()))
+/// assert_eq!(OpenSslProbe::from_status(Some(true)).state(), FipsState::Enabled);
+/// assert_eq!(OpenSslProbe::from_status(None).state(), FipsState::Unknown);
+/// ```
+pub struct OpenSslProbe {
+    fips_active: Option<bool>,
+}
+
+impl OpenSslProbe {
+    /// Build from a provider-supplied runtime FIPS status (`None` = unknown).
+    pub fn from_status(fips_active: Option<bool>) -> Self {
+        Self { fips_active }
+    }
+}
+
+impl FipsProbe for OpenSslProbe {
+    fn state(&self) -> FipsState {
+        match self.fips_active {
+            Some(true) => FipsState::Enabled,
+            Some(false) => FipsState::Disabled,
+            None => FipsState::Unknown,
+        }
+    }
+
+    fn identity(&self) -> ModuleReport {
+        ModuleReport {
+            module: Some("rhel9-openssl-fips".to_string()),
+            version: None,
+            certificate: Some("4857".to_string()),
+            state: self.state(),
+        }
+    }
+}
+
 /// What to do when the runtime assertion is not satisfied.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OnFailure {
@@ -236,6 +287,26 @@ mod tests {
         let _ = assert_fips!();
         let _ = assert_fips!(NullProbe);
         let _ = assert_fips!(NullProbe, OnFailure::Warn);
+    }
+
+    #[test]
+    fn openssl_probe_maps_status() {
+        assert_eq!(
+            OpenSslProbe::from_status(Some(true)).state(),
+            FipsState::Enabled
+        );
+        assert_eq!(
+            OpenSslProbe::from_status(Some(false)).state(),
+            FipsState::Disabled
+        );
+        assert_eq!(OpenSslProbe::from_status(None).state(), FipsState::Unknown);
+        assert_eq!(
+            OpenSslProbe::from_status(Some(true))
+                .identity()
+                .certificate
+                .as_deref(),
+            Some("4857")
+        );
     }
 }
 

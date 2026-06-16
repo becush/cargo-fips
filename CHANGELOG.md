@@ -39,6 +39,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `cargo-fips-runtime` — runtime FIPS-assertion companion: `FipsProbe` trait,
   `NullProbe`, `assert_fips!`, and (behind the `aws-lc-rs` feature) `AwsLcRsProbe`
   calling `aws_lc_rs::try_fips_mode()`.
+- `OpenSslProbe` in `cargo-fips-runtime` — asserts OpenSSL FIPS mode at runtime,
+  which is where it is actually decided. It *consumes* the status the application's
+  OpenSSL binding already exposes (`ossl::is_fips()`, a rustls
+  `CryptoProvider::fips()`, or an FFI check) via `from_status(Option<bool>)`, so it
+  pulls no new dependency. `check` now reports OpenSSL FIPS mode as
+  runtime-determined rather than guessing from the build graph.
 - CI workflow: build, test, and exit-code assertions against fixtures. The
   emitted CBOM is validated against the official CycloneDX 1.6 JSON schema, and
   the CBOM now declares its `$schema`.

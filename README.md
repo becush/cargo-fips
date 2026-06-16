@@ -178,6 +178,21 @@ fn main() {
 }
 ```
 
+For OpenSSL there is no build-time fact to read — FIPS mode is decided
+dynamically at process start. `OpenSslProbe` therefore *consumes* the runtime
+status your provider already exposes (e.g. `ossl`'s `is_fips()`, or a rustls
+`CryptoProvider::fips()`), so it links no OpenSSL binding of its own:
+
+```rust
+use cargo_fips_runtime::{assert_fips, OnFailure, OpenSslProbe};
+
+fn main() {
+    // Feed in whatever your OpenSSL binding reports at runtime.
+    let probe = OpenSslProbe::from_status(Some(ossl::is_fips()));
+    assert_fips!(probe, OnFailure::Panic);
+}
+```
+
 `FipsProbe` is the integration point a future unified provider trait (`is_fips()`)
 would implement. The `aws-lc-rs` feature pulls aws-lc-rs's FIPS backend, which
 needs a C toolchain (cmake, a C compiler, Go) to build.
@@ -195,7 +210,7 @@ a compliance decision.
 | `cargo fips oe` | **implemented** (target-triple classification) |
 | `cargo fips guard` | **implemented** (RUSTFLAGS + profile inspection) |
 | `cargo fips attest` | **implemented** (CycloneDX 1.6 CBOM + SC-13 narrative) |
-| `cargo-fips-runtime` | **implemented** (`NullProbe`; `AwsLcRsProbe` via feature) |
+| `cargo-fips-runtime` | **implemented** (`NullProbe`; `OpenSslProbe`; `AwsLcRsProbe` via feature) |
 
 What `check` verifies today (spec §10.1):
 
