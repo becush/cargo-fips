@@ -262,7 +262,7 @@ Four backend adapters ship today, covering **every boundary kind in the spec**:
 |---|---|---|---|
 | `aws-lc-rs` | AWS-LC FIPS | prebuilt-static | #4816 |
 | wolfSSL Rust crates | wolfCrypt FIPS | source-built | #4718, #5041 |
-| `openssl` (system provider) | RHEL 9 OpenSSL FIPS provider | platform-provided | #4857 |
+| `openssl` / `ossl` / `rustls-ossl` | RHEL 9 OpenSSL FIPS provider | platform-provided | #4857 |
 | `cryptoki` / PKCS#11 | external HSM / KMS | out-of-process | operator-declared |
 
 The boundary kind drives `guard`. For the same perturbing flag (`-C target-cpu`):

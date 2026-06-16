@@ -8,6 +8,10 @@
 //! graph — so the boundary is [`BoundaryKind::PlatformProvided`] and Rust build
 //! flags do not perturb it.
 //!
+//! Detected via the classic `openssl`/`openssl-sys` bindings, the newer `ossl`
+//! binding (spun out of the kryoptic project), or a rustls-over-OpenSSL provider
+//! (`rustls-ossl` / `rustls-openssl`).
+//!
 //! FIPS mode is a runtime/platform property invisible to Cargo, so
 //! `fips_enabled` reports `Unknown`. A `vendored` build of the `openssl` crate
 //! would compile a *separate* OpenSSL and bypass the platform provider entirely;
@@ -23,8 +27,18 @@ pub struct OpenSslProvider;
 
 const ANCHOR: &str = "openssl";
 const SYS: &str = "openssl-sys";
-/// All crates belonging to this backend (`openssl-src` is the vendored build).
-const FAMILY: &[&str] = &[ANCHOR, SYS, "openssl-src"];
+/// Crates whose presence indicates this backend: the classic `openssl` bindings,
+/// the newer `ossl` binding (from kryoptic), and the rustls-over-OpenSSL providers.
+const BINDINGS: &[&str] = &[ANCHOR, SYS, "ossl", "rustls-ossl", "rustls-openssl"];
+/// All crates belonging to this backend (bindings plus the vendored-build crate).
+const FAMILY: &[&str] = &[
+    ANCHOR,
+    SYS,
+    "ossl",
+    "rustls-ossl",
+    "rustls-openssl",
+    "openssl-src",
+];
 
 impl FipsBackend for OpenSslProvider {
     fn name(&self) -> &'static str {
@@ -32,24 +46,24 @@ impl FipsBackend for OpenSslProvider {
     }
 
     fn detect(&self, graph: &Graph) -> Option<DetectedBackend> {
-        for crate_name in [ANCHOR, SYS] {
-            if graph.contains(crate_name) {
-                return Some(DetectedBackend {
-                    name: self.name(),
-                    anchor_crate: crate_name.to_string(),
-                });
-            }
-        }
-        None
+        BINDINGS
+            .iter()
+            .copied()
+            .find(|c| graph.contains(c))
+            .map(|c| DetectedBackend {
+                name: self.name(),
+                anchor_crate: c.to_string(),
+            })
     }
 
     fn module_identity(&self, graph: &Graph) -> ModuleIdentity {
         ModuleIdentity {
             module_id: "rhel9-openssl-fips".to_string(),
-            module_crate: graph
-                .version_of(SYS)
-                .map(|v| (SYS.to_string(), v))
-                .or_else(|| graph.version_of(ANCHOR).map(|v| (ANCHOR.to_string(), v))),
+            module_crate: BINDINGS
+                .iter()
+                .copied()
+                .find(|c| graph.contains(c))
+                .and_then(|c| graph.version_of(c).map(|v| (c.to_string(), v))),
             certificates: vec!["4857".to_string()],
         }
     }

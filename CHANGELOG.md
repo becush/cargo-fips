@@ -30,7 +30,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   adapter model is not vendor-specific and exercising `guard`'s hard-fail path.
 - OpenSSL 3 provider backend adapter (platform-provided boundary) + registry
   entry for the RHEL 9 OpenSSL FIPS Provider, CMVP #4857 (3.0.7-395c1a240fbfffd8,
-  CAVP A4807).
+  CAVP A4807). Detects the classic `openssl`/`openssl-sys` bindings, the newer
+  `ossl` binding (from kryoptic), and the rustls-over-OpenSSL providers
+  (`rustls-ossl` / `rustls-openssl`).
 - PKCS#11 backend adapter (out-of-process boundary) for offload to an external
   HSM/KMS, completing all four boundary kinds. `check` now handles backends that
   pin no certificate (the certificate is operator-declared for this path).
