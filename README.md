@@ -1,5 +1,9 @@
 # cargo-fips
 
+[![CI](https://github.com/becush/cargo-fips/actions/workflows/ci.yml/badge.svg)](https://github.com/becush/cargo-fips/actions/workflows/ci.yml)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#contributing)
+[![Status: experimental](https://img.shields.io/badge/status-experimental%20(v0.0.x)-orange.svg)](#status)
+
 A Cargo subcommand and companion crate for **FIPS 140-3 build assurance and
 evidence generation** in Rust.
 
@@ -13,11 +17,19 @@ validated module.
 > drift from the declared, validated configuration," *not* "validated." Vendor
 > affirmation and final sign-off are human and CMVP judgments.
 
+> ⚠️ **Experimental (v0.0.x).** APIs, output, and the registry schema may change.
+> The certificate registry mixes CMVP-verified facts with **seed data** (some
+> tested-OE and CAVP details); check each entry's `_sources`/`_note` against the
+> module's Security Policy before relying on it. Not a basis for a compliance
+> decision.
+
 See [`cargo-fips-spec.md`](./cargo-fips-spec.md) for the full design.
 
 ## Status
 
-Early scaffold (Phase 0 + full CLI skeleton).
+Experimental (v0.0.x): all subcommands are implemented and CI-tested, but the
+registry is partly seed data (see the note above), so this isn't yet a basis for
+a compliance decision.
 
 | Subcommand | Status |
 |---|---|
