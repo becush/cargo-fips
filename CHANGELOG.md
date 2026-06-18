@@ -41,8 +41,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   calling `aws_lc_rs::try_fips_mode()`.
 - `OpenSslProbe` in `cargo-fips-runtime` — asserts OpenSSL FIPS mode at runtime,
   which is where it is actually decided. It *consumes* the status the application's
-  OpenSSL binding already exposes (`ossl::is_fips()`, a rustls
-  `CryptoProvider::fips()`, or an FFI check) via `from_status(Option<bool>)`, so it
+  OpenSSL binding already exposes (rustls-ossl's `OsslContext::fips_is_enabled()`,
+  a rustls `CryptoProvider::fips()`, or an FFI check) via `from_status(Option<bool>)`, so it
   pulls no new dependency. `check` now reports OpenSSL FIPS mode as
   runtime-determined rather than guessing from the build graph.
 - `readiness()` in `cargo-fips-runtime` — a fail-closed readiness decision over any

@@ -178,17 +178,18 @@ fn main() {
 }
 ```
 
-For OpenSSL there is no build-time fact to read — FIPS mode is decided
+For OpenSSL there is no build-time fact to read, since FIPS mode is decided
 dynamically at process start. `OpenSslProbe` therefore *consumes* the runtime
-status your provider already exposes (e.g. `ossl`'s `is_fips()`, or a rustls
-`CryptoProvider::fips()`), so it links no OpenSSL binding of its own:
+status your provider already exposes (with rustls-ossl that is
+`OsslContext::fips_is_enabled()`; a rustls `CryptoProvider::fips()` works too), so
+it links no OpenSSL binding of its own:
 
 ```rust
 use cargo_fips_runtime::{assert_fips, OnFailure, OpenSslProbe};
 
 fn main() {
-    // Feed in whatever your OpenSSL binding reports at runtime.
-    let probe = OpenSslProbe::from_status(Some(ossl::is_fips()));
+    // `ctx` is your rustls-ossl OsslContext; feed in its runtime FIPS status.
+    let probe = OpenSslProbe::from_status(Some(ctx.fips_is_enabled()));
     assert_fips!(probe, OnFailure::Panic);
 }
 ```
@@ -220,13 +221,13 @@ one:
 
 A Prometheus-style gauge is deliberately **not** included. OpenSSL FIPS mode is
 effectively a startup property: it's a constant for the life of the process, so a
-gauge fed by `is_fips()` would read a flat `1` and show a green tile that proves
-nothing. There's no soft runtime signal to graph either, because a FIPS self-test
-failure puts the module into a hard error state that takes the process down, and
-your existing crash alerting already covers that. The dangerous state is the
-silent one: an app that comes up without the FIPS provider and quietly runs
+gauge fed by `fips_is_enabled()` would read a flat `1` and show a green tile that
+proves nothing. There's no soft runtime signal to graph either, because a FIPS
+self-test failure puts the module into a hard error state that takes the process
+down, and your existing crash alerting already covers that. The dangerous state is
+the silent one: an app that comes up without the FIPS provider and quietly runs
 non-FIPS crypto. That doesn't crash, and it's exactly what the readiness gate and
-`is_fips()` catch.
+`fips_is_enabled()` catch.
 
 ## Status
 

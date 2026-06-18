@@ -16,9 +16,10 @@
 //! - [`AwsLcRsProbe`] (behind the `aws-lc-rs` feature) calls
 //!   `aws_lc_rs::try_fips_mode()` to report the live state of the linked AWS-LC
 //!   module (CMVP certificate #4816).
-//! - [`OpenSslProbe`] consumes a provider's runtime FIPS status (e.g. `ossl`'s
-//!   `is_fips()` or a rustls `CryptoProvider::fips()`) — OpenSSL FIPS mode is
-//!   decided dynamically at process start, not at build time (cert #4857).
+//! - [`OpenSslProbe`] consumes a provider's runtime FIPS status (e.g.
+//!   rustls-ossl's `OsslContext::fips_is_enabled()` or a rustls
+//!   `CryptoProvider::fips()`); OpenSSL FIPS mode is decided dynamically at
+//!   process start, not at build time (cert #4857).
 //!
 //! Other backends implement [`FipsProbe`] the same way; this trait is the hook a
 //! future unified provider abstraction (`is_fips()`) would satisfy.
@@ -59,7 +60,7 @@
 //! state that takes the process down, so ordinary crash alerting already covers
 //! it. The state actually worth catching is the silent one, an app that comes up
 //! without the FIPS provider and quietly runs non-FIPS crypto, which is exactly
-//! what [`readiness`] and `is_fips()` catch.
+//! what [`readiness`] and a runtime status query like `fips_is_enabled()` catch.
 
 #![forbid(unsafe_code)]
 
@@ -159,19 +160,24 @@ impl FipsProbe for AwsLcRsProbe {
 
 /// A [`FipsProbe`] for the OpenSSL 3 FIPS provider (e.g. CMVP certificate #4857).
 ///
-/// For OpenSSL, FIPS mode is **dynamic** — decided at process start by which
+/// For OpenSSL, FIPS mode is **dynamic**, decided at process start by which
 /// providers are loaded and whether the default property query enforces
 /// `fips=yes`. There is no build-time fact to read, so this probe takes the
 /// answer as input rather than linking an OpenSSL binding itself: feed it the
-/// runtime status from whatever binding the application already uses — `ossl`'s
-/// `is_fips()`, a rustls `CryptoProvider::fips()`, or your own
+/// runtime status from whatever binding the application already uses. With
+/// rustls-ossl that is `OsslContext::fips_is_enabled()`; you can equally pass a
+/// rustls `CryptoProvider::fips()` or your own
 /// `EVP_default_properties_is_fips_enabled` + `OSSL_PROVIDER_available(.., "fips")`
-/// check. `None` means "could not determine" → [`FipsState::Unknown`].
+/// check. `None` means "could not determine", giving [`FipsState::Unknown`].
+///
+/// The probe only *reads* status. Forcing the mode (e.g. rustls-ossl's
+/// `enforce_fips()`) is the application's call, kept separate on purpose: this
+/// crate observes and reports, it does not configure the module.
 ///
 /// ```
 /// use cargo_fips_runtime::{FipsProbe, FipsState, OpenSslProbe};
 ///
-/// // e.g. OpenSslProbe::from_status(Some(ossl::is_fips()))
+/// // e.g. OpenSslProbe::from_status(Some(ctx.fips_is_enabled()))
 /// assert_eq!(OpenSslProbe::from_status(Some(true)).state(), FipsState::Enabled);
 /// assert_eq!(OpenSslProbe::from_status(None).state(), FipsState::Unknown);
 /// ```
@@ -275,7 +281,7 @@ pub struct Readiness {
 ///
 /// ```ignore
 /// async fn healthz() -> (StatusCode, String) {
-///     let r = readiness(&OpenSslProbe::from_status(Some(ossl::is_fips())));
+///     let r = readiness(&OpenSslProbe::from_status(Some(ctx.fips_is_enabled())));
 ///     let code = if r.ready { StatusCode::OK } else { StatusCode::SERVICE_UNAVAILABLE };
 ///     (code, r.detail)
 /// }
