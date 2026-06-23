@@ -194,9 +194,11 @@ fn main() {
 }
 ```
 
-`FipsProbe` is the integration point a future unified provider trait (`is_fips()`)
-would implement. The `aws-lc-rs` feature pulls aws-lc-rs's FIPS backend, which
-needs a C toolchain (cmake, a C compiler, Go) to build.
+`FipsProbe` is the common abstraction over each provider's own runtime FIPS
+query, so you wire in whichever your stack already exposes:
+`OsslContext::fips_is_enabled()` (rustls-ossl), `try_fips_mode()` (aws-lc-rs), or
+a rustls `CryptoProvider::fips()`. The `aws-lc-rs` feature pulls aws-lc-rs's FIPS
+backend, which needs a C toolchain (cmake, a C compiler, Go) to build.
 
 #### Reporting into your existing pipeline
 

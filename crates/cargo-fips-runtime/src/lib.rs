@@ -6,8 +6,9 @@
 //! a downstream application links to assert that at startup and to record module
 //! identity and service-indicator status.
 //!
-//! It is the meeting point with a future unified provider trait, where an
-//! `is_fips()` hook becomes the [`FipsProbe`] implementation.
+//! [`FipsProbe`] is the common abstraction over each provider's own runtime FIPS
+//! query (`OsslContext::fips_is_enabled()`, `try_fips_mode()`, a rustls
+//! `CryptoProvider::fips()`), so an application wires in whichever it already has.
 //!
 //! # Probes
 //!
@@ -21,8 +22,8 @@
 //!   `CryptoProvider::fips()`); OpenSSL FIPS mode is decided dynamically at
 //!   process start, not at build time (cert #4857).
 //!
-//! Other backends implement [`FipsProbe`] the same way; this trait is the hook a
-//! future unified provider abstraction (`is_fips()`) would satisfy.
+//! Other backends implement [`FipsProbe`] the same way, each forwarding its own
+//! provider's runtime FIPS query.
 //!
 //! # Example
 //!
